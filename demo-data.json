@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "settings": {
+    "lang": "en",
+    "landlordName": "Abdulla",
+    "landlordNameAr": "عبدالله",
+    "currency": "AED",
+    "dateFormat": "dd/MM/yyyy",
+    "reminderDaysAhead": 14,
+    "lowBalanceThresholdAed": 0,
+    "lastBackupAt": "2026-05-23T10:00:00.000Z"
+  },
+  "properties": [
+    {
+      "id": "p_khalifa_compound",
+      "name": "Khalifa City Compound",
+      "nameAr": "مجمع مدينة خليفة",
+      "type": "compound",
+      "emirate": "Abu Dhabi",
+      "area": "Khalifa City",
+      "street": "",
+      "buildingNo": "",
+      "makaniPlot": "",
+      "photo": "",
+      "notes": "4 townhouses + 1 villa",
+      "createdAt": "2026-05-23T10:00:00.000Z"
+    }
+  ],
+  "units": [
+    { "id": "u_th1", "propertyId": "p_khalifa_compound", "label": "Townhouse 1", "kind": "townhouse", "bedrooms": 5, "bathrooms": 7, "areaSqft": 0, "annualRentAed": 170000, "status": "occupied", "notes": "5BR + 7BA + maid's room + 2 living rooms + laundry room" },
+    { "id": "u_th2", "propertyId": "p_khalifa_compound", "label": "Townhouse 2", "kind": "townhouse", "bedrooms": 5, "bathrooms": 7, "areaSqft": 0, "annualRentAed": 170000, "status": "occupied", "notes": "5BR + 7BA + maid's room + 2 living rooms + laundry room" },
+    { "id": "u_th3", "propertyId": "p_khalifa_compound", "label": "Townhouse 3", "kind": "townhouse", "bedrooms": 5, "bathrooms": 7, "areaSqft": 0, "annualRentAed": 170000, "status": "occupied", "notes": "5BR + 7BA + maid's room + 2 living rooms + laundry room" },
+    { "id": "u_th4", "propertyId": "p_khalifa_compound", "label": "Townhouse 4", "kind": "townhouse", "bedrooms": 5, "bathrooms": 7, "areaSqft": 0, "annualRentAed": 170000, "status": "occupied", "notes": "5BR + 7BA + maid's room + 2 living rooms + laundry room" },
+    { "id": "u_villa", "propertyId": "p_khalifa_compound", "label": "Villa", "kind": "villa", "bedrooms": 10, "bathrooms": 13, "areaSqft": 0, "annualRentAed": 290000, "status": "occupied", "notes": "10BR + 13BA" }
+  ],
+  "tenants": [
+    { "id": "t_ahmed", "name": "Ahmed Al-Mansoori", "nameAr": "أحمد المنصوري", "phone": "+971501234501", "altPhone": "", "email": "", "emiratesId": "784-1985-1234501-1", "emiratesIdExpiry": "2027-08-15", "passportNo": "A12345601", "passportExpiry": "2030-04-12", "visaExpiry": "", "nationality": "Emirati", "employer": "ADNOC", "notes": "", "createdAt": "2026-01-01T08:00:00.000Z" },
+    { "id": "t_rajesh", "name": "Rajesh Kumar", "nameAr": "راجيش كومار", "phone": "+971501234502", "altPhone": "", "email": "", "emiratesId": "784-1990-1234502-2", "emiratesIdExpiry": "2028-03-20", "passportNo": "P9876541", "passportExpiry": "2029-11-05", "visaExpiry": "2027-02-15", "nationality": "Indian", "employer": "Etisalat", "notes": "", "createdAt": "2026-03-15T08:00:00.000Z" },
+    { "id": "t_mohammad", "name": "Mohammad Khan", "nameAr": "محمد خان", "phone": "+971501234503", "altPhone": "", "email": "", "emiratesId": "784-1982-1234503-3", "emiratesIdExpiry": "2026-09-10", "passportNo": "AC234567", "passportExpiry": "2028-06-20", "visaExpiry": "2026-08-25", "nationality": "Pakistani", "employer": "Dubai Holding", "notes": "Lease expiring soon — needs renewal decision", "createdAt": "2025-06-01T08:00:00.000Z" },
+    { "id": "t_sara", "name": "Sara Abdullah", "nameAr": "سارة عبدالله", "phone": "+971501234504", "altPhone": "", "email": "", "emiratesId": "784-1992-1234504-4", "emiratesIdExpiry": "2027-12-31", "passportNo": "EG765432", "passportExpiry": "2031-08-30", "visaExpiry": "2027-09-01", "nationality": "Egyptian", "employer": "Mashreq Bank", "notes": "", "createdAt": "2025-09-01T08:00:00.000Z" },
+    { "id": "t_khalid", "name": "Khalid Al-Hashemi", "nameAr": "خالد الهاشمي", "phone": "+971501234505", "altPhone": "", "email": "", "emiratesId": "784-1978-1234505-5", "emiratesIdExpiry": "2029-05-15", "passportNo": "A11111101", "passportExpiry": "2032-01-10", "visaExpiry": "", "nationality": "Emirati", "employer": "Mubadala", "notes": "", "createdAt": "2025-11-01T08:00:00.000Z" }
+  ],
+  "contracts": [
+    { "id": "c_ahmed",    "unitId": "u_th1",   "tenantId": "t_ahmed",    "startDate": "2026-01-01", "endDate": "2027-01-01", "annualRentAed": 170000, "numCheques": 4, "securityDepositAed": 8500,  "tawtheeqNo": "TWT-2026-001", "tawtheeqExpiry": "2027-01-01", "commission": 0, "vatPct": 0, "isCommercial": false, "status": "active", "renewedFromId": null, "notes": "", "createdAt": "2026-01-01T08:00:00.000Z" },
+    { "id": "c_rajesh",   "unitId": "u_th2",   "tenantId": "t_rajesh",   "startDate": "2026-03-15", "endDate": "2027-03-15", "annualRentAed": 170000, "numCheques": 4, "securityDepositAed": 8500,  "tawtheeqNo": "TWT-2026-002", "tawtheeqExpiry": "2027-03-15", "commission": 0, "vatPct": 0, "isCommercial": false, "status": "active", "renewedFromId": null, "notes": "", "createdAt": "2026-03-15T08:00:00.000Z" },
+    { "id": "c_mohammad", "unitId": "u_th3",   "tenantId": "t_mohammad", "startDate": "2025-06-01", "endDate": "2026-06-01", "annualRentAed": 170000, "numCheques": 4, "securityDepositAed": 8500,  "tawtheeqNo": "TWT-2025-105", "tawtheeqExpiry": "2026-06-01", "commission": 0, "vatPct": 0, "isCommercial": false, "status": "active", "renewedFromId": null, "notes": "", "createdAt": "2025-06-01T08:00:00.000Z" },
+    { "id": "c_sara",     "unitId": "u_th4",   "tenantId": "t_sara",     "startDate": "2025-09-01", "endDate": "2026-09-01", "annualRentAed": 170000, "numCheques": 4, "securityDepositAed": 8500,  "tawtheeqNo": "TWT-2025-187", "tawtheeqExpiry": "2026-09-01", "commission": 0, "vatPct": 0, "isCommercial": false, "status": "active", "renewedFromId": null, "notes": "", "createdAt": "2025-09-01T08:00:00.000Z" },
+    { "id": "c_khalid",   "unitId": "u_villa", "tenantId": "t_khalid",   "startDate": "2025-11-01", "endDate": "2026-11-01", "annualRentAed": 290000, "numCheques": 4, "securityDepositAed": 14500, "tawtheeqNo": "TWT-2025-301", "tawtheeqExpiry": "2026-11-01", "commission": 0, "vatPct": 0, "isCommercial": false, "status": "active", "renewedFromId": null, "notes": "", "createdAt": "2025-11-01T08:00:00.000Z" }
+  ],
+  "cheques": [
+    { "id": "ch_a1", "contractId": "c_ahmed",    "chequeNo": "100501", "bank": "Emirates NBD", "dueDate": "2026-01-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2026-01-02", "clearedDate": "2026-01-03", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_a2", "contractId": "c_ahmed",    "chequeNo": "100502", "bank": "Emirates NBD", "dueDate": "2026-04-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2026-04-01", "clearedDate": "2026-04-02", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_a3", "contractId": "c_ahmed",    "chequeNo": "100503", "bank": "Emirates NBD", "dueDate": "2026-07-01", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_a4", "contractId": "c_ahmed",    "chequeNo": "100504", "bank": "Emirates NBD", "dueDate": "2026-10-01", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+
+    { "id": "ch_r1", "contractId": "c_rajesh",   "chequeNo": "200315", "bank": "ADCB", "dueDate": "2026-03-15", "amountAed": 42500, "status": "cleared", "depositedDate": "2026-03-16", "clearedDate": "2026-03-17", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_r2", "contractId": "c_rajesh",   "chequeNo": "200316", "bank": "ADCB", "dueDate": "2026-06-15", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_r3", "contractId": "c_rajesh",   "chequeNo": "200317", "bank": "ADCB", "dueDate": "2026-09-15", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_r4", "contractId": "c_rajesh",   "chequeNo": "200318", "bank": "ADCB", "dueDate": "2026-12-15", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+
+    { "id": "ch_m1", "contractId": "c_mohammad", "chequeNo": "301001", "bank": "FAB", "dueDate": "2025-06-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2025-06-01", "clearedDate": "2025-06-02", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_m2", "contractId": "c_mohammad", "chequeNo": "301002", "bank": "FAB", "dueDate": "2025-09-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2025-09-02", "clearedDate": "2025-09-04", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_m3", "contractId": "c_mohammad", "chequeNo": "301003", "bank": "FAB", "dueDate": "2025-12-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2025-12-02", "clearedDate": "2025-12-03", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_m4", "contractId": "c_mohammad", "chequeNo": "301004", "bank": "FAB", "dueDate": "2026-03-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2026-03-01", "clearedDate": "2026-03-02", "replacedByChequeId": null, "notes": "" },
+
+    { "id": "ch_s1", "contractId": "c_sara",     "chequeNo": "400901", "bank": "Mashreq", "dueDate": "2025-09-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2025-09-01", "clearedDate": "2025-09-02", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_s2", "contractId": "c_sara",     "chequeNo": "400902", "bank": "Mashreq", "dueDate": "2025-12-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2025-12-01", "clearedDate": "2025-12-01", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_s3", "contractId": "c_sara",     "chequeNo": "400903", "bank": "Mashreq", "dueDate": "2026-03-01", "amountAed": 42500, "status": "cleared", "depositedDate": "2026-03-02", "clearedDate": "2026-03-05", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_s4", "contractId": "c_sara",     "chequeNo": "400904", "bank": "Mashreq", "dueDate": "2026-06-01", "amountAed": 42500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" },
+
+    { "id": "ch_k1", "contractId": "c_khalid",   "chequeNo": "501101", "bank": "ADIB", "dueDate": "2025-11-01", "amountAed": 72500, "status": "cleared", "depositedDate": "2025-11-02", "clearedDate": "2025-11-03", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_k2", "contractId": "c_khalid",   "chequeNo": "501102", "bank": "ADIB", "dueDate": "2026-02-01", "amountAed": 72500, "status": "cleared", "depositedDate": "2026-02-01", "clearedDate": "2026-02-02", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_k3", "contractId": "c_khalid",   "chequeNo": "501103", "bank": "ADIB", "dueDate": "2026-05-01", "amountAed": 72500, "status": "cleared", "depositedDate": "2026-05-03", "clearedDate": "2026-05-04", "replacedByChequeId": null, "notes": "" },
+    { "id": "ch_k4", "contractId": "c_khalid",   "chequeNo": "501104", "bank": "ADIB", "dueDate": "2026-08-01", "amountAed": 72500, "status": "pending", "depositedDate": null, "clearedDate": null, "replacedByChequeId": null, "notes": "" }
+  ],
+  "payments": [],
+  "documents": [],
+  "maintenance": []
+}
