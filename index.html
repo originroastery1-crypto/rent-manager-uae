@@ -565,7 +565,7 @@ function buildChequeSchedule(contract){
       id: uid('ch'),
       contractId: contract.id,
       chequeNo:'',
-      bank:'',
+      bank: n===1 ? 'Bank transfer' : '',
       dueDate: toISODate(due),
       amountAed: amount,
       status:'pending',
@@ -2093,7 +2093,7 @@ function ContractsPage({ setRoute }){
   if(statusFilter) items = items.filter(c=>c.status===statusFilter);
   const filtered = useFiltered(items, search, ['tawtheeqNo','notes']);
 
-  function blank(){ return { id:uid('c'), unitId:'', tenantId:'', startDate:todayISO(), endDate:'', annualRentAed:0, numCheques:4, securityDepositAed:0, tawtheeqNo:'', tawtheeqExpiry:'', commission:0, vatPct:0, isCommercial:false, status:'active', renewedFromId:null, notes:'', createdAt:new Date().toISOString() }; }
+  function blank(){ return { id:uid('c'), unitId:'', tenantId:'', startDate:todayISO(), endDate:'', annualRentAed:0, numCheques:1, securityDepositAed:0, tawtheeqNo:'', tawtheeqExpiry:'', commission:0, vatPct:0, isCommercial:false, status:'active', renewedFromId:null, notes:'', createdAt:new Date().toISOString() }; }
 
   function save(item, opts={}){
     const existing = state.contracts.find(c=>c.id===item.id);
@@ -2129,7 +2129,7 @@ function ContractsPage({ setRoute }){
       startDate: toISODate(newStart),
       endDate: toISODate(newEnd),
       annualRentAed: c.annualRentAed,  // user can adjust up to cappedRent
-      numCheques: c.numCheques || 4,
+      numCheques: c.numCheques || 1,
       securityDepositAed: c.securityDepositAed || 0,
       tawtheeqNo: '',
       tawtheeqExpiry: '',
@@ -2311,7 +2311,7 @@ function ContractDetail({ id, setRoute }){
       unitId: c.unitId, tenantId: c.tenantId,
       startDate: toISODate(newStart), endDate: toISODate(newEnd),
       annualRentAed: c.annualRentAed,
-      numCheques: c.numCheques || 4,
+      numCheques: c.numCheques || 1,
       securityDepositAed: c.securityDepositAed || 0,
       tawtheeqNo:'', tawtheeqExpiry:'',
       commission:0, isCommercial:!!c.isCommercial, vatPct:c.vatPct||0,
@@ -2537,9 +2537,13 @@ function ContractEditor({ open, item, onClose, onSave }){
           <Input type="number" min="0" value={v.annualRentAed||0} onChange={e=>update({annualRentAed:parseFloat(e.target.value||0)})}/>
           {overCap && <div className="mt-1 text-xs text-red-600">⚠ Exceeds 5% annual cap. Previous: {fmtAed(lastContract.annualRentAed,lang)}.</div>}
         </Field>
-        <Field label={t('numCheques')} hint={perCheque ? `${fmtAed(perCheque,lang)} ${t('perCheque').toLowerCase()}`:null}>
-          <Select value={v.numCheques||4} onChange={e=>update({numCheques:parseInt(e.target.value,10)})}>
-            {[1,2,3,4,6,12].map(n=> <option key={n} value={n}>{n}</option>)}
+        <Field label="Payments per year" hint={v.numCheques>1 ? (perCheque ? `${fmtAed(perCheque,lang)} ${t('perCheque').toLowerCase()}` : null) : "1 annual payment (bank transfer)"}>
+          <Select value={v.numCheques||1} onChange={e=>update({numCheques:parseInt(e.target.value,10)})}>
+            <option value="1">1 — single annual payment</option>
+            <option value="2">2 — every 6 months</option>
+            <option value="4">4 — quarterly (cheques)</option>
+            <option value="6">6 — every 2 months</option>
+            <option value="12">12 — monthly</option>
           </Select>
         </Field>
         <Field label={`${t('securityDeposit')} (${t('aed')})`}>
