@@ -1,0 +1,22 @@
+{
+  "name": "Rent Manager — UAE",
+  "short_name": "Rent Manager",
+  "description": "Simple rent management for Abu Dhabi & Al Ain landlords",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#c79a3a",
+  "lang": "en",
+  "dir": "auto",
+  "categories": ["productivity", "business", "finance"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
