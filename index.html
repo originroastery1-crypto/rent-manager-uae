@@ -4295,6 +4295,27 @@ function App(){
     document.documentElement.dir  = lang==='ar' ? 'rtl' : 'ltr';
   }, [state.settings.lang]);
 
+  // ?demo=1 → load demo-data.json (one-tap data import)
+  useEffect(()=>{
+    const params = new URLSearchParams(location.search);
+    if(params.get('demo') === '1'){
+      const proceed = state.properties.length===0 || confirm('Load demo data? This will REPLACE all current data with the Khalifa City Compound demo.');
+      if(proceed){
+        fetch('demo-data.json', { cache:'no-cache' })
+          .then(r => { if(!r.ok) throw new Error('Demo file not found'); return r.json(); })
+          .then(data => {
+            dispatch({ type:'set', state: data });
+            // remove the ?demo=1 so refresh doesn't re-trigger
+            history.replaceState({}, '', location.pathname + location.hash);
+            alert('Demo data loaded ✓');
+          })
+          .catch(err => alert('Could not load demo: '+err.message));
+      } else {
+        history.replaceState({}, '', location.pathname + location.hash);
+      }
+    }
+  }, []);
+
   const [routeSeg, routeId] = route.split('/');
   const ctx = { state, dispatch };
   return (
