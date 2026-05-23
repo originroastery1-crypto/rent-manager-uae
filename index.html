@@ -1391,7 +1391,8 @@ function PropertyDetail({ id, setRoute }){
                   const ac = stats.activeContracts.find(c=>c.unitId===u.id);
                   const tn = ac && state.tenants.find(x=>x.id===ac.tenantId);
                   return (
-                    <tr key={u.id} className="border-b border-ink-100 last:border-0">
+                    <tr key={u.id} onClick={()=>setRoute('units/'+u.id)}
+                        className="border-b border-ink-100 last:border-0 hover:bg-ink-100/40 cursor-pointer">
                       <td className="px-5 py-3 font-medium text-ink-900">{u.label}</td>
                       <td className="px-3 py-3 text-ink-700">{u.kind}</td>
                       <td className="px-3 py-3">{tn ? pickName(tn,lang) : <span className="text-ink-500">—</span>}</td>
@@ -1605,7 +1606,7 @@ function UnitsPage(){
   }
 
   function rowClick(u){
-    location.hash = 'properties/'+u.propertyId;
+    location.hash = 'units/'+u.id;
   }
 
   if(state.properties.length===0){
@@ -1764,6 +1765,248 @@ function UnitEditor({ open, item, onClose, onSave }){
         <Button onClick={()=>{ if(!v.propertyId||!v.label?.trim()){ alert(t('required')); return; } onSave(v); }}>{t('save')}</Button>
       </div>
     </Modal>
+  );
+}
+
+// ---------- UnitDetail page ----------------------------------------------
+
+function UnitDetail({ id, setRoute }){
+  const { state, dispatch } = useApp();
+  const { t, lang } = useT();
+  const today = startOfDay(new Date());
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const u = state.units.find(x=>x.id===id);
+  if(!u){
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-xl font-semibold text-ink-900">Unit not found.</h2>
+        <Button className="mt-4" variant="secondary" onClick={()=>setRoute('units')}>← {t('units')}</Button>
+      </div>
+    );
+  }
+  const p = state.properties.find(x=>x.id===u.propertyId);
+  const allContracts = state.contracts.filter(c=>c.unitId===u.id).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''));
+  const activeContract = allContracts.find(c=>c.status==='active');
+  const tenant = activeContract && state.tenants.find(x=>x.id===activeContract.tenantId);
+  const contractIds = allContracts.map(c=>c.id);
+  const cheques = state.cheques.filter(ch=>contractIds.includes(ch.contractId)).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  const payments = state.payments.filter(pm=>contractIds.includes(pm.contractId)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const maint = state.maintenance.filter(m=>m.unitId===u.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const cleared = cheques.filter(ch=>ch.status==='cleared').reduce((s,ch)=>s+(parseFloat(ch.amountAed)||0),0)
+                + payments.reduce((s,pm)=>s+(parseFloat(pm.amountAed)||0),0);
+  const pending = cheques.filter(ch=>ch.status==='pending'||ch.status==='bounced').reduce((s,ch)=>s+(parseFloat(ch.amountAed)||0),0);
+  const annual = getUnitAnnualRent(u);
+  const monthly = getUnitMonthlyRent(u);
+  const leaseEnd = activeContract?.endDate;
+  const daysToEnd = leaseEnd ? daysBetween(today, parseISO(leaseEnd)) : null;
+  const showNotice = daysToEnd!=null && daysToEnd<=60 && daysToEnd>=0 && activeContract?.status==='active';
+
+  function setChequeStatus(ch, status){
+    const patch = { ...ch, status };
+    if(status==='deposited' && !patch.depositedDate) patch.depositedDate = todayISO();
+    if(status==='cleared'   && !patch.clearedDate)   patch.clearedDate   = todayISO();
+    dispatch({ type:'updateCheque', item: patch });
+  }
+  function toggleOccupancy(){
+    const next = u.status==='vacant' ? 'occupied' : (u.status==='occupied' ? 'vacant' : u.status);
+    dispatch({ type:'updateUnit', item: { ...u, status: next } });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <button onClick={()=>setRoute('units')} className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900">← {t('units')}</button>
+      </div>
+
+      {/* Hero */}
+      <Card>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-ink-900 truncate">{u.label}</h1>
+              <Badge tone={u.status==='occupied'?'green':u.status==='vacant'?'gray':u.status==='maintenance'?'amber':'blue'}>{t('unit_'+u.status)}</Badge>
+              <Badge tone="gold">{t('unit_kind_'+u.kind, u.kind)}</Badge>
+            </div>
+            <div className="text-sm text-ink-500 mt-1">
+              <button className="hover:text-ink-900 hover:underline" onClick={()=>setRoute('properties/'+(p?.id||''))}>{pickName(p,lang)}</button>
+              {' · '}{p?.area}{' · '}{p?.emirate}
+            </div>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <div className="text-xs uppercase text-ink-500">{t('bedrooms')}</div>
+                <div className="font-semibold text-ink-900 num">{u.bedrooms || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase text-ink-500">{t('bathrooms')}</div>
+                <div className="font-semibold text-ink-900 num">{u.bathrooms || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase text-ink-500">{t('areaSqft')}</div>
+                <div className="font-semibold text-ink-900 num">{u.areaSqft ? `${u.areaSqft.toLocaleString()} sqft` : '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase text-ink-500">{t('annualRent')}</div>
+                <div className="font-semibold text-ink-900 num">{fmtAed(annual,lang)}</div>
+                <div className="text-xs text-ink-500 num">≈ {fmtAed(Math.round(monthly),lang)}{t('perMonth')}</div>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={toggleOccupancy}>⇄ {u.status==='vacant'?'Mark occupied':u.status==='occupied'?'Mark vacant':t('unit_'+u.status)}</Button>
+            <Button variant="secondary" size="sm" icon={<I.edit/>} onClick={()=>setEditing(true)}>{t('edit')}</Button>
+            <Button variant="danger" size="sm" icon={<I.trash/>} onClick={()=>setDeleting(true)}>{t('delete')}</Button>
+          </div>
+        </div>
+      </Card>
+
+      {showNotice && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-3">
+          <span className="mt-0.5"><I.alert/></span>
+          <div>
+            <strong>2-month notice window — {daysToEnd} days until lease ends.</strong> Send tenant written notice if you want to non-renew or change rent. Missing this auto-renews at the same terms.
+          </div>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Kpi tone="blue"  label={t('tenant')}      value={tenant ? pickName(tenant,lang) : 'Vacant'} sub={tenant?.phone||''}/>
+        <Kpi tone="green" label="Collected"        value={fmtAed(cleared,lang)} sub={annual?`${Math.round(cleared/annual*100)}% of year`:''}/>
+        <Kpi tone="amber" label="Outstanding"      value={fmtAed(pending,lang)} sub={pending?'awaiting':'all paid'}/>
+        <Kpi tone="red"   label={t('endDate')}     value={daysToEnd!=null?Math.abs(daysToEnd):'—'} sub={daysToEnd!=null && daysToEnd<0 ? t('daysOverdue') : daysToEnd!=null ? t('daysLeft') : ''}/>
+      </div>
+
+      {/* Current Contract */}
+      {activeContract ? (
+        <Card title="Current contract"
+          action={<Button size="sm" variant="secondary" onClick={()=>setRoute('contracts/'+activeContract.id)}>View contract →</Button>}>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <div className="text-xs uppercase text-ink-500">{t('tenant')}</div>
+              <button onClick={()=>setRoute('tenants/'+activeContract.tenantId)} className="font-medium text-ink-900 hover:underline">{pickName(tenant,lang)||'—'}</button>
+              {tenant?.phone && <div className="text-xs text-ink-500 num">{tenant.phone}</div>}
+            </div>
+            <div>
+              <div className="text-xs uppercase text-ink-500">Period</div>
+              <div className="font-medium text-ink-900 num">{fmtDate(activeContract.startDate,lang)} → {fmtDate(activeContract.endDate,lang)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-ink-500">{t('annualRent')}</div>
+              <div className="font-medium text-ink-900 num">{fmtAed(activeContract.annualRentAed,lang)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-ink-500">{t('tawtheeqNo')}</div>
+              <div className="font-medium text-ink-900 num">{activeContract.tawtheeqNo||'—'}</div>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <div className="text-center py-6">
+            <div className="text-4xl mb-2">🚪</div>
+            <div className="font-semibold text-ink-900">This unit is currently vacant</div>
+            <p className="text-sm text-ink-500 mt-1">Add a contract to assign a tenant.</p>
+            <Button className="mt-3" onClick={()=>setRoute('contracts')}>+ {t('addContract')}</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Cheques / payments */}
+      <Card title={`Payments received (${cheques.length})`}>
+        {cheques.length===0 ? <div className="text-ink-500 text-sm">{t('empty')}</div> : (
+          <div className="overflow-x-auto -mx-5">
+            <table className="w-full text-sm">
+              <thead className="text-ink-500">
+                <tr className="border-b border-ink-100">
+                  <th className="text-start px-5 py-2 font-medium">{t('dueDate')}</th>
+                  <th className="text-start px-3 py-2 font-medium">{t('chequeNo')}/Ref</th>
+                  <th className="text-start px-3 py-2 font-medium">{t('bank')}/Method</th>
+                  <th className="text-end px-3 py-2 font-medium">{t('amount')}</th>
+                  <th className="text-start px-3 py-2 font-medium">{t('status')}</th>
+                  <th className="text-end px-5 py-2 font-medium">{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cheques.map(ch=>{
+                  const due = parseISO(ch.dueDate);
+                  const days = due ? daysBetween(today, due) : null;
+                  return (
+                    <tr key={ch.id} className="border-b border-ink-100 last:border-0">
+                      <td className="px-5 py-2 num">{fmtDate(ch.dueDate, lang)}
+                        {days!=null && (ch.status==='pending'||ch.status==='bounced') && (
+                          <div><Badge tone={days<0?'red':days<=7?'amber':'gray'}>{days<0?`${-days}d overdue`:days===0?t('today'):`${days}d`}</Badge></div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 num">{ch.chequeNo||'—'}</td>
+                      <td className="px-3 py-2">{ch.bank||'—'}</td>
+                      <td className="px-3 py-2 text-end num font-semibold">{fmtAed(ch.amountAed,lang)}</td>
+                      <td className="px-3 py-2"><Badge tone={ch.status==='cleared'?'green':ch.status==='deposited'?'blue':ch.status==='bounced'?'red':ch.status==='pending'?'amber':'gray'}>{t('cheque_'+ch.status)}</Badge></td>
+                      <td className="px-5 py-2 text-end">
+                        <div className="flex justify-end gap-1">
+                          {ch.status==='pending'   && <button onClick={()=>setChequeStatus(ch,'cleared')} title={t('markCleared')} className="px-2 py-1 rounded bg-emerald-600 text-white text-xs">✓</button>}
+                          {ch.status==='deposited' && <button onClick={()=>setChequeStatus(ch,'cleared')} title={t('markCleared')} className="px-2 py-1 rounded bg-emerald-600 text-white text-xs">✓</button>}
+                          {(ch.status==='pending'||ch.status==='deposited') && <button onClick={()=>setChequeStatus(ch,'bounced')} title={t('markBounced')} className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs">✗</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Maintenance history */}
+      <Card title={`${t('maintenance')} (${maint.length})`}
+        action={<Button size="sm" variant="secondary" onClick={()=>setRoute('maintenance')}>{t('addMaintenance')}</Button>}>
+        {maint.length===0 ? <div className="text-ink-500 text-sm">{t('empty')}</div> : (
+          <ul className="divide-y divide-ink-100">
+            {maint.map(m=>(
+              <li key={m.id} className="py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-ink-900 truncate">{m.title}</div>
+                  <div className="text-xs text-ink-500">{fmtDate(m.date,lang)} · {m.vendor||'—'}</div>
+                </div>
+                <div className="text-end">
+                  <div className="font-semibold text-ink-900 num">{fmtAed(m.costAed,lang)}</div>
+                  <Badge tone={m.status==='done'?'green':m.status==='in_progress'?'amber':'blue'}>{t('maint_'+m.status)}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* Past contracts */}
+      {allContracts.filter(c=>c.status!=='active').length>0 && (
+        <Card title="Past contracts">
+          <ul className="divide-y divide-ink-100">
+            {allContracts.filter(c=>c.status!=='active').map(c=>{
+              const tn = state.tenants.find(x=>x.id===c.tenantId);
+              return (
+                <li key={c.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <button onClick={()=>setRoute('contracts/'+c.id)} className="font-medium text-ink-900 hover:underline truncate">{pickName(tn,lang)||'—'}</button>
+                    <div className="text-xs text-ink-500">{fmtDate(c.startDate,lang)} → {fmtDate(c.endDate,lang)} · {fmtAed(c.annualRentAed,lang)}/yr</div>
+                  </div>
+                  <Badge tone={c.status==='renewed'?'gold':c.status==='expired'?'gray':'red'}>{t('contract_'+c.status)}</Badge>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+      {u.notes && <Card title={t('notes')}><p className="text-ink-700 whitespace-pre-wrap">{u.notes}</p></Card>}
+
+      <UnitEditor open={editing} item={u} onClose={()=>setEditing(false)} onSave={(item)=>{ dispatch({type:'updateUnit', item}); setEditing(false); }}/>
+      <ConfirmDialog open={deleting} message={t('confirmDelete')+' '+t('unit')}
+        onCancel={()=>setDeleting(false)}
+        onConfirm={()=>{ dispatch({ type:'deleteUnit', id:u.id }); setRoute('units'); }}/>
+    </div>
   );
 }
 
@@ -4327,7 +4570,7 @@ function App(){
       <Shell route={routeSeg} setRoute={setRoute}>
         {routeSeg==='dashboard'   && <Dashboard setRoute={setRoute} />}
         {routeSeg==='properties'  && (routeId ? <PropertyDetail id={routeId} setRoute={setRoute}/> : <PropertiesPage setRoute={setRoute}/>)}
-        {routeSeg==='units'       && <UnitsPage />}
+        {routeSeg==='units'       && (routeId ? <UnitDetail id={routeId} setRoute={setRoute}/> : <UnitsPage setRoute={setRoute}/>)}
         {routeSeg==='tenants'     && (routeId ? <TenantDetail id={routeId} setRoute={setRoute}/> : <TenantsPage setRoute={setRoute}/>)}
         {routeSeg==='contracts'   && (routeId ? <ContractDetail id={routeId} setRoute={setRoute}/> : <ContractsPage setRoute={setRoute}/>)}
         {routeSeg==='cheques'     && <ChequesPage />}
