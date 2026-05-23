@@ -490,6 +490,18 @@ function fmtBytes(n){
 }
 function classNames(...xs){ return xs.filter(Boolean).join(' '); }
 
+// Unit rent: annual is primary in UAE. Backward-compat: if only monthlyRentAed was saved
+// from an older version, derive annual = monthly * 12.
+function getUnitAnnualRent(u){
+  if(!u) return 0;
+  if(u.annualRentAed!=null && u.annualRentAed!=='') return parseFloat(u.annualRentAed)||0;
+  if(u.monthlyRentAed) return (parseFloat(u.monthlyRentAed)||0)*12;
+  return 0;
+}
+function getUnitMonthlyRent(u){
+  return getUnitAnnualRent(u)/12;
+}
+
 // Phone split: detect +XXX prefix, return [code, restOfNumber]
 function splitPhone(phone){
   const s = String(phone||'').trim();
@@ -1222,7 +1234,7 @@ function PropertiesPage({ setRoute }){
             <div><div className="text-lg font-bold text-ink-900 num">{stats.unitsHere.length}</div><div className="text-[10px] text-ink-500 uppercase">{t('units')}</div></div>
             <div><div className="text-lg font-bold text-emerald-700 num">{stats.occupied}</div><div className="text-[10px] text-ink-500 uppercase">{t('unit_occupied')}</div></div>
             <div><div className="text-lg font-bold text-ink-500 num">{stats.unitsHere.length-stats.occupied}</div><div className="text-[10px] text-ink-500 uppercase">{t('unit_vacant')}</div></div>
-            <div><div className="text-lg font-bold text-gold-600 num">{Math.round(stats.monthlyIncome).toLocaleString(lang==='ar'?'ar-AE':'en-US')}</div><div className="text-[10px] text-ink-500 uppercase">{t('aed')}/mo</div></div>
+            <div><div className="text-lg font-bold text-gold-600 num">{Math.round((stats.yearlyIncome||stats.monthlyIncome*12)/1000)}K</div><div className="text-[10px] text-ink-500 uppercase">{t('aed')}/yr</div></div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-2" onClick={e=>e.stopPropagation()}>
             <a href={mapsUrl(p)} target="_blank" rel="noopener noreferrer"
@@ -1350,7 +1362,7 @@ function PropertyDetail({ id, setRoute }){
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Kpi tone="blue"  label={t('units')}          value={stats.unitsHere.length} sub={`${stats.occupied} ${t('unit_occupied').toLowerCase()}`} />
-        <Kpi tone="green" label={`${t('aed')}/mo`}     value={fmtAed(Math.round(stats.monthlyIncome), lang)} />
+        <Kpi tone="green" label={`${t('annualRent')}`} value={fmtAed(Math.round(stats.yearlyIncome||stats.monthlyIncome*12), lang)} sub={`≈ ${fmtAed(Math.round(stats.monthlyIncome), lang)}${t('perMonth')}`} />
         <Kpi tone="amber" label={`${t('yearTotal')} ${t('expected')}`} value={fmtAed(stats.expectedYr, lang)} sub={`${collectionPct}% ${t('received').toLowerCase()}`} />
         <Kpi tone="red"   label={t('kpi_overdue')}    value={stats.overdue.length} sub={fmtAed(stats.overdue.reduce((s,ch)=>s+(parseFloat(ch.amountAed)||0),0), lang)} />
       </div>
@@ -1368,7 +1380,7 @@ function PropertyDetail({ id, setRoute }){
                   <th className="text-start px-5 py-2 font-medium">{t('unitLabel')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('kind')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('tenant')}</th>
-                  <th className="text-end  px-3 py-2 font-medium">{t('monthlyRent')}</th>
+                  <th className="text-end  px-3 py-2 font-medium">{t('annualRent')}</th>
                   <th className="text-start px-5 py-2 font-medium">{t('status')}</th>
                 </tr>
               </thead>
@@ -1381,7 +1393,10 @@ function PropertyDetail({ id, setRoute }){
                       <td className="px-5 py-3 font-medium text-ink-900">{u.label}</td>
                       <td className="px-3 py-3 text-ink-700">{u.kind}</td>
                       <td className="px-3 py-3">{tn ? pickName(tn,lang) : <span className="text-ink-500">—</span>}</td>
-                      <td className="px-3 py-3 text-end num font-medium">{fmtAed(u.monthlyRentAed, lang)}</td>
+                      <td className="px-3 py-3 text-end">
+                        <div className="num font-medium">{fmtAed(getUnitAnnualRent(u), lang)}</div>
+                        <div className="text-xs text-ink-500 num">≈ {fmtAed(Math.round(getUnitMonthlyRent(u)), lang)}{t('perMonth')}</div>
+                      </td>
                       <td className="px-5 py-3"><Badge tone={u.status==='occupied'?'green':u.status==='vacant'?'gray':u.status==='maintenance'?'amber':'blue'}>{t('unit_'+u.status)}</Badge></td>
                     </tr>
                   );
@@ -1551,7 +1566,7 @@ function UnitsPage(){
   if(statusFilter) items = items.filter(u=>u.status===statusFilter);
   const filtered = useFiltered(items, search, ['label','notes']);
 
-  function blank(){ return { id:uid('u'), propertyId: state.properties[0]?.id || '', label:'', kind:'apartment', bedrooms:0, bathrooms:0, areaSqft:0, monthlyRentAed:0, status:'vacant', notes:'' }; }
+  function blank(){ return { id:uid('u'), propertyId: state.properties[0]?.id || '', label:'', kind:'apartment', bedrooms:0, bathrooms:0, areaSqft:0, annualRentAed:0, status:'vacant', notes:'' }; }
   function save(item){
     if(state.units.some(u=>u.id===item.id)) dispatch({ type:'updateUnit', item });
     else dispatch({ type:'addUnit', item });
@@ -1626,7 +1641,7 @@ function UnitsPage(){
                 <tr className="border-b border-ink-100">
                   <th className="text-start px-5 py-2 font-medium">{t('property')} · {t('unit')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('tenant')}</th>
-                  <th className="text-end  px-3 py-2 font-medium">{t('monthlyRent')}</th>
+                  <th className="text-end  px-3 py-2 font-medium">{t('annualRent')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('endDate')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('cheque')}</th>
                   <th className="text-start px-3 py-2 font-medium">{t('status')}</th>
@@ -1654,7 +1669,10 @@ function UnitsPage(){
                           </div>
                         ) : <span className="text-ink-500">—</span>}
                       </td>
-                      <td className="px-3 py-3 text-end num font-medium">{fmtAed(u.monthlyRentAed, lang)}</td>
+                      <td className="px-3 py-3 text-end">
+                        <div className="num font-medium">{fmtAed(getUnitAnnualRent(u), lang)}</div>
+                        <div className="text-xs text-ink-500 num">≈ {fmtAed(Math.round(getUnitMonthlyRent(u)), lang)}{t('perMonth')}</div>
+                      </td>
                       <td className="px-3 py-3">
                         {leaseEnd ? (
                           <div>
@@ -1727,8 +1745,8 @@ function UnitEditor({ open, item, onClose, onSave }){
         <Field label={t('areaSqft')}>
           <Input type="number" min="0" value={v.areaSqft||0} onChange={e=>update({areaSqft:parseFloat(e.target.value||0)})}/>
         </Field>
-        <Field label={`${t('monthlyRent')} (${t('aed')})`}>
-          <Input type="number" min="0" value={v.monthlyRentAed||0} onChange={e=>update({monthlyRentAed:parseFloat(e.target.value||0)})}/>
+        <Field label={`${t('annualRent')} (${t('aed')})`} hint={v.annualRentAed ? `≈ ${fmtAed(Math.round((parseFloat(v.annualRentAed)||0)/12), lang)} ${t('perMonth')}` : 'UAE rent is quoted annually'}>
+          <Input type="number" min="0" value={v.annualRentAed||0} onChange={e=>update({annualRentAed:parseFloat(e.target.value||0), monthlyRentAed:undefined})}/>
         </Field>
         <Field label={t('status')}>
           <Select value={v.status||'vacant'} onChange={e=>update({status:e.target.value})}>
@@ -2473,7 +2491,7 @@ function ContractEditor({ open, item, onClose, onSave }){
   const u = state.units.find(x=>x.id===v.unitId);
   function pickUnit(unitId){
     const u = state.units.find(x=>x.id===unitId);
-    update({ unitId, annualRentAed: u ? (parseFloat(u.monthlyRentAed||0)*12) : (v.annualRentAed||0) });
+    update({ unitId, annualRentAed: u ? getUnitAnnualRent(u) : (v.annualRentAed||0) });
   }
   // auto-fill end date 12 months after start
   function pickStart(s){
@@ -2497,7 +2515,7 @@ function ContractEditor({ open, item, onClose, onSave }){
             <option value="">{t('select')}</option>
             {state.units.map(u=>{
               const p = state.properties.find(p=>p.id===u.propertyId);
-              return <option key={u.id} value={u.id}>{pickName(p,lang)} — {u.label} ({fmtAed(u.monthlyRentAed,lang)}/mo)</option>;
+              return <option key={u.id} value={u.id}>{pickName(p,lang)} — {u.label} ({fmtAed(getUnitAnnualRent(u),lang)}/yr)</option>;
             })}
           </Select>
         </Field>
@@ -4356,8 +4374,9 @@ function propertyStats(state, propertyId, year){
   const unitIds   = unitsHere.map(u=>u.id);
   const contracts = state.contracts.filter(c=>unitIds.includes(c.unitId));
   const activeContracts = contracts.filter(c=>c.status==='active');
-  // monthly expected rent from currently-active contracts
-  const monthlyIncome = activeContracts.reduce((s,c)=>s + ((parseFloat(c.annualRentAed)||0)/12), 0);
+  // yearly expected rent from currently-active contracts (UAE rent is annual)
+  const yearlyIncome = activeContracts.reduce((s,c)=>s + (parseFloat(c.annualRentAed)||0), 0);
+  const monthlyIncome = yearlyIncome/12;
   const contractIds = contracts.map(c=>c.id);
   const yr = year || new Date().getFullYear();
   const yrCheques = state.cheques.filter(ch=>{
@@ -4370,7 +4389,7 @@ function propertyStats(state, propertyId, year){
     if(!contractIds.includes(ch.contractId)) return false;
     const d = parseISO(ch.dueDate); return d && d<startOfDay(new Date()) && (ch.status==='pending'||ch.status==='bounced');
   });
-  return { unitsHere, occupied, contracts, activeContracts, monthlyIncome, expectedYr, receivedYr, overdue };
+  return { unitsHere, occupied, contracts, activeContracts, monthlyIncome, yearlyIncome, expectedYr, receivedYr, overdue };
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
