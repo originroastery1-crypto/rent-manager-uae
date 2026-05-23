@@ -83,8 +83,8 @@ const { useState, useEffect, useMemo, useReducer, useRef, useCallback, createCon
 const STORAGE_KEY = 'rentmanager.v1';
 const APP_VERSION = 1;
 const EMIRATES = ['Abu Dhabi','Al Ain','Al Dhafra'];
-const UNIT_KINDS = ['apartment','villa','studio','shop','office','warehouse'];
-const PROPERTY_TYPES = ['villa','townhouse','building','apartment_block','other'];
+const UNIT_KINDS = ['apartment','villa','townhouse','studio','shop','office','warehouse'];
+const PROPERTY_TYPES = ['villa','townhouse','building','apartment_block','compound','other'];
 const UNIT_STATUS = ['vacant','occupied','maintenance','reserved'];
 const CHEQUE_STATUS = ['pending','deposited','cleared','bounced','replaced','cancelled'];
 const CONTRACT_STATUS = ['active','expired','terminated','renewed'];
@@ -192,7 +192,8 @@ const TR = {
     editProperty:'Edit property', emirate:'Emirate', area:'Area',
     street:'Street', buildingNo:'Building / Plot',
     propertyType:'Property type',
-    property_villa:'Villa', property_townhouse:'Townhouse', property_building:'Building', property_apartment_block:'Apartment block', property_other:'Other',
+    property_villa:'Villa', property_townhouse:'Townhouse', property_building:'Building', property_apartment_block:'Apartment block', property_compound:'Compound', property_other:'Other',
+    unit_kind_apartment:'Apartment', unit_kind_villa:'Villa', unit_kind_townhouse:'Townhouse', unit_kind_studio:'Studio', unit_kind_shop:'Shop', unit_kind_office:'Office', unit_kind_warehouse:'Warehouse',
     // units
     units:'Units', unit:'Unit', addUnit:'Add unit', editUnit:'Edit unit',
     unitLabel:'Unit number / label', bedrooms:'Bedrooms', bathrooms:'Bathrooms',
@@ -288,7 +289,8 @@ const TR = {
     editProperty:'تعديل عقار', emirate:'الإمارة', area:'المنطقة',
     street:'الشارع', buildingNo:'رقم المبنى / القطعة',
     propertyType:'نوع العقار',
-    property_villa:'فيلا', property_townhouse:'تاون هاوس', property_building:'مبنى', property_apartment_block:'عمارة سكنية', property_other:'أخرى',
+    property_villa:'فيلا', property_townhouse:'تاون هاوس', property_building:'مبنى', property_apartment_block:'عمارة سكنية', property_compound:'مجمّع', property_other:'أخرى',
+    unit_kind_apartment:'شقة', unit_kind_villa:'فيلا', unit_kind_townhouse:'تاون هاوس', unit_kind_studio:'استوديو', unit_kind_shop:'محل', unit_kind_office:'مكتب', unit_kind_warehouse:'مستودع',
     // units
     units:'الوحدات', unit:'وحدة', addUnit:'إضافة وحدة', editUnit:'تعديل وحدة',
     unitLabel:'رقم الوحدة / التسمية', bedrooms:'غرف النوم', bathrooms:'الحمامات',
