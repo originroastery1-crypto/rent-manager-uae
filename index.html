@@ -82,7 +82,52 @@ const { useState, useEffect, useMemo, useReducer, useRef, useCallback, createCon
 
 const STORAGE_KEY = 'rentmanager.v1';
 const APP_VERSION = 1;
-const EMIRATES = ['Abu Dhabi','Al Ain','Al Dhafra'];
+const EMIRATES = ['Abu Dhabi','Al Ain','Al Dhafra','Dubai','Sharjah','Ajman','Ras Al Khaimah','Umm Al Quwain','Fujairah'];
+
+// Emirate-specific rental law differences
+// Abu Dhabi emirate (Abu Dhabi City + Al Ain + Al Dhafra) — Tawtheeq + 2-month notice + 5% cap
+// Dubai — Ejari + 12-month notice + RERA calculator
+// Other emirates — fall back to generic, no special system
+function getEmirateRules(emirate){
+  if(emirate === 'Dubai'){
+    return {
+      regLabel:'Ejari',
+      regLabelAr:'إيجاري',
+      regAuthority:'Dubai Land Department',
+      regUrl:'https://dubailand.gov.ae',
+      noticeDays: 365,
+      noticeLabel: '12-month notice',
+      noticeLabelAr: 'إخطار 12 شهراً',
+      noticeText: 'Dubai law requires 12 months written notice with a valid reason for non-renewal or rent change (RERA Decree 26/2013). Missing this means the lease auto-renews at current rent.',
+      noticeTextAr: 'القانون في دبي يتطلب إخطاراً خطياً قبل 12 شهراً من نهاية العقد مع سبب قانوني لعدم التجديد أو تعديل الإيجار (مرسوم ريرا 26/2013). عدم القيام يجدد العقد تلقائياً بنفس الإيجار.',
+      disputeAuthority:'RDC (Rental Disputes Center)',
+      capRule:'RERA Rent Calculator (varies by area)',
+      hasMollak: true,
+    };
+  }
+  // Default: Abu Dhabi emirate (Abu Dhabi City + Al Ain + Al Dhafra)
+  return {
+    regLabel:'Tawtheeq',
+    regLabelAr:'توثيق',
+    regAuthority:'Department of Municipalities & Transport',
+    regUrl:'https://tamm.abudhabi',
+    noticeDays: 60,
+    noticeLabel: '2-month notice',
+    noticeLabelAr: 'إخطار شهرين',
+    noticeText: 'UAE law requires 2 months written notice before lease end for non-renewal or rent change (Law 4/2010 Art. 20). Missing this auto-renews at current rent.',
+    noticeTextAr: 'القانون يتطلب إخطاراً خطياً قبل شهرين من نهاية العقد لعدم التجديد أو تعديل الإيجار (قانون 4/2010 مادة 20). عدم القيام يجدد العقد تلقائياً بنفس الإيجار.',
+    disputeAuthority:'RDSC (Rent Dispute Settlement Committee)',
+    capRule:'5% annual cap at renewal (Executive Council 14/2016)',
+    hasMollak: false,
+  };
+}
+
+// Helper to get rules for a contract (based on its unit→property emirate)
+function getContractRules(state, contract){
+  const u = state.units.find(x=>x.id===contract.unitId);
+  const p = u && state.properties.find(x=>x.id===u.propertyId);
+  return getEmirateRules(p?.emirate || 'Abu Dhabi');
+}
 const UNIT_KINDS = ['apartment','villa','townhouse','studio','shop','office','warehouse'];
 const PROPERTY_TYPES = ['villa','townhouse','building','apartment_block','compound','other'];
 const UNIT_STATUS = ['vacant','occupied','maintenance','reserved'];
@@ -971,6 +1016,8 @@ function Dashboard({ setRoute }){
               className={classNames('px-3 py-1.5 rounded-lg font-medium transition', emirate==='Abu Dhabi'?'bg-white text-ink-900 shadow':'text-ink-500 hover:text-ink-900')}>Abu Dhabi</button>
             <button onClick={()=>setEmirate('Al Ain')}
               className={classNames('px-3 py-1.5 rounded-lg font-medium transition', emirate==='Al Ain'?'bg-white text-ink-900 shadow':'text-ink-500 hover:text-ink-900')}>Al Ain</button>
+            <button onClick={()=>setEmirate('Dubai')}
+              className={classNames('px-3 py-1.5 rounded-lg font-medium transition', emirate==='Dubai'?'bg-white text-ink-900 shadow':'text-ink-500 hover:text-ink-900')}>Dubai</button>
           </div>
           <div className="text-ink-500 text-sm hidden sm:block">{new Date().toLocaleDateString(lang==='ar'?'ar-AE':'en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'})}</div>
         </div>
@@ -1801,7 +1848,8 @@ function UnitDetail({ id, setRoute }){
   const monthly = getUnitMonthlyRent(u);
   const leaseEnd = activeContract?.endDate;
   const daysToEnd = leaseEnd ? daysBetween(today, parseISO(leaseEnd)) : null;
-  const showNotice = daysToEnd!=null && daysToEnd<=60 && daysToEnd>=0 && activeContract?.status==='active';
+  const unitRules = getEmirateRules(p?.emirate || 'Abu Dhabi');
+  const showNotice = daysToEnd!=null && daysToEnd<=unitRules.noticeDays && daysToEnd>=0 && activeContract?.status==='active';
 
   function setChequeStatus(ch, status){
     const patch = { ...ch, status };
@@ -1865,7 +1913,7 @@ function UnitDetail({ id, setRoute }){
         <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-3">
           <span className="mt-0.5"><I.alert/></span>
           <div>
-            <strong>2-month notice window — {daysToEnd} days until lease ends.</strong> Send tenant written notice if you want to non-renew or change rent. Missing this auto-renews at the same terms.
+            <strong>{unitRules.noticeLabel} window — {daysToEnd} days until lease ends.</strong> {unitRules.noticeText}
           </div>
         </div>
       )}
@@ -2419,7 +2467,8 @@ function ContractsPage({ setRoute }){
               const d = parseISO(ch.dueDate); return d && d>=today && ch.status==='pending';
             }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0];
             const contractDoc = state.documents.find(d=>d.ownerType==='contract' && d.ownerId===c.id);
-            const showNotice = daysToEnd!=null && daysToEnd<=60 && daysToEnd>=0 && c.status==='active';
+            const rules = getContractRules(state, c);
+            const showNotice = daysToEnd!=null && daysToEnd<=rules.noticeDays && daysToEnd>=0 && c.status==='active';
             const expiredOrAlmost = c.status==='expired' || (daysToEnd!=null && daysToEnd<=30 && c.status==='active');
 
             return (
@@ -2434,7 +2483,7 @@ function ContractsPage({ setRoute }){
                     </div>
                     <div className="text-sm text-ink-500 mt-1">{pickName(p,lang)} · {u?.label} · {p?.emirate}</div>
                     <div className="text-xs text-ink-500 mt-1">{fmtDate(c.startDate,lang)} → {fmtDate(c.endDate,lang)}</div>
-                    {c.tawtheeqNo && <div className="text-xs text-ink-500 mt-0.5">{t('tawtheeqNo')}: <span className="num">{c.tawtheeqNo}</span></div>}
+                    {c.tawtheeqNo && <div className="text-xs text-ink-500 mt-0.5">{rules.regLabel} #: <span className="num">{c.tawtheeqNo}</span></div>}
                     {/* Progress bar */}
                     {cheques.length>0 && (
                       <div className="mt-3">
@@ -2486,7 +2535,7 @@ function ContractsPage({ setRoute }){
                   <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-2" onClick={e=>e.stopPropagation()}>
                     <span className="mt-0.5"><I.alert/></span>
                     <div>
-                      <strong>2-month notice window.</strong> UAE law requires 2 months' written notice before lease end for non-renewal or rent change. Missing this auto-renews at current rent.
+                      <strong>{rules.noticeLabel} window.</strong> {rules.noticeText}
                     </div>
                   </div>
                 )}
@@ -2533,7 +2582,8 @@ function ContractDetail({ id, setRoute }){
   const outstanding = cheques.filter(ch=>ch.status==='pending'||ch.status==='bounced').reduce((s,ch)=>s+(parseFloat(ch.amountAed)||0),0);
   const end = parseISO(c.endDate);
   const daysToEnd = end ? daysBetween(today, end) : null;
-  const showNotice = daysToEnd!=null && daysToEnd<=60 && daysToEnd>=0 && c.status==='active';
+  const rules = getContractRules(state, c);
+  const showNotice = daysToEnd!=null && daysToEnd<=rules.noticeDays && daysToEnd>=0 && c.status==='active';
 
   function setChequeStatus(ch, status){
     const patch = { ...ch, status };
@@ -2589,7 +2639,7 @@ function ContractDetail({ id, setRoute }){
               {' · '}{u?.label}{' · '}{p?.emirate}
             </div>
             <div className="text-sm text-ink-700 mt-2">{fmtDate(c.startDate,lang)} → {fmtDate(c.endDate,lang)}</div>
-            {c.tawtheeqNo && <div className="text-xs text-ink-500 mt-1">{t('tawtheeqNo')}: <span className="num">{c.tawtheeqNo}</span>{c.tawtheeqExpiry && <span> · expires {fmtDate(c.tawtheeqExpiry,lang)}</span>}</div>}
+            {c.tawtheeqNo && <div className="text-xs text-ink-500 mt-1">{rules.regLabel} #: <span className="num">{c.tawtheeqNo}</span>{c.tawtheeqExpiry && <span> · expires {fmtDate(c.tawtheeqExpiry,lang)}</span>}</div>}
           </div>
           <div className="flex flex-wrap gap-2">
             {(c.status==='active'||c.status==='expired') && <Button size="sm" variant="gold" onClick={renew}>↻ Renew</Button>}
@@ -2604,7 +2654,7 @@ function ContractDetail({ id, setRoute }){
         <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-3">
           <span className="mt-0.5"><I.alert/></span>
           <div>
-            <strong>2-month notice window — {daysToEnd} days until lease ends.</strong> Send the tenant written notice now if you want to non-renew or change rent. Missing this auto-renews at the same terms.
+            <strong>{rules.noticeLabel} window — {daysToEnd} days until lease ends.</strong> {rules.noticeText}
           </div>
         </div>
       )}
@@ -2792,10 +2842,10 @@ function ContractEditor({ open, item, onClose, onSave }){
         <Field label={`${t('securityDeposit')} (${t('aed')})`}>
           <Input type="number" min="0" value={v.securityDepositAed||0} onChange={e=>update({securityDepositAed:parseFloat(e.target.value||0)})}/>
         </Field>
-        <Field label={t('tawtheeqNo')}>
-          <Input value={v.tawtheeqNo||''} onChange={e=>update({tawtheeqNo:e.target.value})}/>
+        <Field label={`${(getContractRules(state, v)).regLabel} number`} hint={(getContractRules(state, v)).regAuthority}>
+          <Input value={v.tawtheeqNo||''} onChange={e=>update({tawtheeqNo:e.target.value})} placeholder={(getContractRules(state, v)).regLabel==='Ejari'?'12345/2026':'TWT-2026-001'}/>
         </Field>
-        <Field label={`Tawtheeq ${t('endDate').toLowerCase()}`}>
+        <Field label={`${(getContractRules(state, v)).regLabel} ${t('endDate').toLowerCase()}`}>
           <Input type="date" value={v.tawtheeqExpiry||''} onChange={e=>update({tawtheeqExpiry:e.target.value})}/>
         </Field>
         <Field label={t('status')}>
