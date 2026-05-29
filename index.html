@@ -3117,9 +3117,8 @@ function ChequesPage(){
         </td>
         <td className="px-5 py-3 text-end">
           <div className="flex items-center gap-1 justify-end flex-wrap">
-            {ch.status==='pending' && <button onClick={()=>setStatus(ch,'deposited')} title={t('markDeposited')} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-xs font-medium">↑</button>}
-            {ch.status==='deposited' && (<>
-              <button onClick={()=>setStatus(ch,'cleared')} title={t('markCleared')} className="px-2 py-1 rounded bg-emerald-600 text-white text-xs font-medium">✓</button>
+            {(ch.status==='pending'||ch.status==='deposited') && (<>
+              <button onClick={()=>setStatus(ch,'cleared')} title={t('markCleared')} className="px-2 py-1 rounded bg-emerald-600 text-white text-xs font-medium">✓ {t('received')}</button>
               <button onClick={()=>setStatus(ch,'bounced')} title={t('markBounced')} className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs font-medium">✗</button>
             </>)}
             {ch.status==='cleared' && <button onClick={()=>setReceiptFor(ch)} title={t('print')+' '+t('receipt')} className="px-2 py-1 rounded bg-ink-100 text-ink-900 text-xs font-medium">🖨️</button>}
