@@ -585,6 +585,32 @@ function getUnitMonthlyRent(u){
   return getUnitAnnualRent(u)/12;
 }
 
+// Mark a payment received. Bank transfers REQUIRE a unique reference number
+// (letters + numbers) before they can be accepted. Returns true if applied.
+function receivePayment(ch, dispatch){
+  const ar = document.documentElement.lang === 'ar';
+  let ref = String(ch.chequeNo || '').trim();
+  if(ch.mode === 'transfer' && !ref){
+    const msg = ar
+      ? 'أدخل رقم مرجع التحويل البنكي (أحرف وأرقام) لتأكيد استلام الدفعة:'
+      : 'Enter the bank transfer reference number (letters + numbers) to mark this payment as received:';
+    const entered = window.prompt(msg, '');
+    if(entered === null) return false;            // user cancelled
+    ref = entered.trim();
+    if(!ref){
+      alert(ar ? 'رقم المرجع مطلوب لقبول التحويل البنكي.' : 'A reference number is required to accept a bank transfer.');
+      return false;
+    }
+  }
+  dispatch({ type:'updateCheque', item:{
+    ...ch, chequeNo: ref || ch.chequeNo || '',
+    status:'cleared',
+    clearedDate: ch.clearedDate || todayISO(),
+    depositedDate: ch.depositedDate || todayISO(),
+  }});
+  return true;
+}
+
 // Phone split: detect +XXX prefix, return [code, restOfNumber]
 function splitPhone(phone){
   const s = String(phone||'').trim();
@@ -1047,9 +1073,9 @@ function Dashboard({ setRoute }){
   }
 
   function setChequeStatus(ch, status){
+    if(status==='cleared'){ receivePayment(ch, dispatch); return; }
     const patch = { ...ch, status };
     if(status==='deposited' && !patch.depositedDate) patch.depositedDate = todayISO();
-    if(status==='cleared'   && !patch.clearedDate)   patch.clearedDate   = todayISO();
     dispatch({ type:'updateCheque', item: patch });
   }
 
@@ -1905,9 +1931,9 @@ function UnitDetail({ id, setRoute }){
   const showNotice = daysToEnd!=null && daysToEnd<=unitRules.noticeDays && daysToEnd>=0 && activeContract?.status==='active';
 
   function setChequeStatus(ch, status){
+    if(status==='cleared'){ receivePayment(ch, dispatch); return; }
     const patch = { ...ch, status };
     if(status==='deposited' && !patch.depositedDate) patch.depositedDate = todayISO();
-    if(status==='cleared'   && !patch.clearedDate)   patch.clearedDate   = todayISO();
     dispatch({ type:'updateCheque', item: patch });
   }
   function toggleOccupancy(){
@@ -2640,9 +2666,9 @@ function ContractDetail({ id, setRoute }){
   const showNotice = daysToEnd!=null && daysToEnd<=rules.noticeDays && daysToEnd>=0 && c.status==='active';
 
   function setChequeStatus(ch, status){
+    if(status==='cleared'){ receivePayment(ch, dispatch); return; }
     const patch = { ...ch, status };
     if(status==='deposited' && !patch.depositedDate) patch.depositedDate = todayISO();
-    if(status==='cleared'   && !patch.clearedDate)   patch.clearedDate   = todayISO();
     dispatch({ type:'updateCheque', item: patch });
   }
 
@@ -3022,9 +3048,9 @@ function ChequesPage(){
     setEditItem(null);
   }
   function setStatus(c, status){
+    if(status==='cleared'){ receivePayment(c, dispatch); return; }
     const patch = { ...c, status };
     if(status==='deposited' && !patch.depositedDate) patch.depositedDate = todayISO();
-    if(status==='cleared'   && !patch.clearedDate)   patch.clearedDate   = todayISO();
     dispatch({ type:'updateCheque', item: patch });
   }
 
@@ -3369,7 +3395,14 @@ function ChequeEditor({ open, item, onClose, onSave }){
       </div>
       <div className="mt-5 flex gap-2 justify-end">
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
-        <Button onClick={()=>{ if(!v.contractId||!v.dueDate||!v.amountAed){ alert(t('required')); return; } onSave(v); }}>{t('save')}</Button>
+        <Button onClick={()=>{
+          if(!v.contractId||!v.dueDate||!v.amountAed){ alert(t('required')); return; }
+          if(v.status==='cleared' && v.mode==='transfer' && !String(v.chequeNo||'').trim()){
+            alert(lang==='ar' ? 'رقم مرجع التحويل البنكي مطلوب لتأكيد الاستلام.' : 'A bank transfer reference number is required to mark it received.');
+            return;
+          }
+          onSave(v);
+        }}>{t('save')}</Button>
       </div>
     </Modal>
   );
