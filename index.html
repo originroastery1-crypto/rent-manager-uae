@@ -4881,7 +4881,7 @@ function App(){
   useEffect(()=>{
     const params = new URLSearchParams(location.search);
     if(params.get('demo') === '1'){
-      const proceed = state.properties.length===0 || confirm('Load demo data? This will REPLACE all current data with the Khalifa City Compound demo.');
+      const proceed = state.properties.length===0 || confirm('Load the full portfolio data? This will REPLACE all current data.');
       if(proceed){
         fetch('demo-data.json', { cache:'no-cache' })
           .then(r => { if(!r.ok) throw new Error('Demo file not found'); return r.json(); })
