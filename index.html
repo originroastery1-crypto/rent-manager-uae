@@ -136,6 +136,12 @@ const CONTRACT_STATUS = ['active','expired','terminated','renewed'];
 const MAINT_STATUS = ['pending','in_progress','done','cancelled'];
 const DOC_KINDS = ['emirates_id','passport','contract','other'];
 const PAYMENT_METHODS = ['cash','transfer','card','cheque','other'];
+// Rent installment: payment mode (matches the real "PAYMENT MODE" column) and the
+// installment label (matches the real "REMARKS" column: First/Second/Third/Final).
+const PAYMENT_MODES = ['cheque','transfer','cash'];
+const INSTALLMENT_LABELS = ['First','Second','Third','Fourth','Fifth','Sixth','Final'];
+// Renewal decision tracked in the monthly audit ("NEW RENT" column)
+const RENEWAL_STATUSES = ['','no_increase','increase','not_renewing','under_processing'];
 
 // Common country codes (UAE + GCC + top expat origins first, then alphabetical for the rest)
 const COUNTRY_CODES = [
@@ -206,8 +212,8 @@ const TR = {
     appTagline: 'Simple rent management for UAE landlords',
     // nav
     nav_dashboard:'Dashboard', nav_properties:'Properties', nav_units:'Units',
-    nav_tenants:'Tenants', nav_contracts:'Contracts', nav_cheques:'Cheques',
-    nav_payments:'Payments', nav_maintenance:'Maintenance', nav_documents:'Documents',
+    nav_tenants:'Tenants', nav_contracts:'Contracts', nav_cheques:'Payments',
+    nav_payments:'Deposits', nav_maintenance:'Maintenance', nav_documents:'Documents',
     nav_reports:'Reports', nav_settings:'Settings',
     // common
     add:'Add', edit:'Edit', delete:'Delete', save:'Save', cancel:'Cancel', close:'Close',
@@ -225,8 +231,8 @@ const TR = {
     welcome:'Welcome back', overview:'Today’s overview',
     kpi_units:'Units', kpi_occupied:'Occupied', kpi_vacant:'Vacant',
     kpi_monthIncome:'Income this month', kpi_overdue:'Overdue',
-    upcomingCheques:'Upcoming cheques', expiringContracts:'Contracts expiring soon',
-    overdueCheques:'Overdue cheques', recentMaintenance:'Recent maintenance',
+    upcomingCheques:'Upcoming payments', expiringContracts:'Contracts expiring soon',
+    overdueCheques:'Overdue payments', recentMaintenance:'Recent maintenance',
     quickActions:'Quick actions',
     qa_addTenant:'Add tenant', qa_addContract:'Add contract',
     qa_logCheque:'Log cheque', qa_logMaintenance:'Log maintenance',
@@ -259,9 +265,24 @@ const TR = {
     cheques:'Cheques', cheque:'Cheque', addCheque:'Add cheque', editCheque:'Edit cheque',
     chequeNo:'Cheque number', bank:'Bank', dueDate:'Due date', depositedDate:'Deposited date',
     clearedDate:'Cleared date',
-    cheque_pending:'Pending', cheque_deposited:'Deposited', cheque_cleared:'Cleared',
+    cheque_pending:'Waiting', cheque_deposited:'Deposited', cheque_cleared:'Received',
     cheque_bounced:'Bounced', cheque_replaced:'Replaced', cheque_cancelled:'Cancelled',
-    markDeposited:'Mark deposited', markCleared:'Mark cleared', markBounced:'Mark bounced',
+    markDeposited:'Mark deposited', markCleared:'Mark received', markBounced:'Mark bounced',
+    // installments + modes
+    installment:'Payment', installments:'Payments', paymentSchedule:'Payment schedule',
+    installmentLabel:'Which payment', paymentMode:'Mode', addInstallment:'Add payment',
+    mode_cheque:'Cheque', mode_transfer:'Transfer', mode_cash:'Cash',
+    inst_First:'First', inst_Second:'Second', inst_Third:'Third', inst_Fourth:'Fourth', inst_Fifth:'Fifth', inst_Sixth:'Sixth', inst_Final:'Final',
+    scheduleTotal:'Schedule total', vsAnnualRent:'vs annual rent', balance:'Balance', paid:'Paid',
+    received:'Received', waiting:'Waiting',
+    quickSplit:'Quick split', splitEvenly:'Split evenly into',
+    // renewal / new rent (audit)
+    renewalDecision:'Renewal decision / New rent', newRent:'New rent',
+    rs_no_increase:'No increase', rs_increase:'Increase', rs_not_renewing:'Not renewing', rs_under_processing:'Under processing', rs_none:'Not decided',
+    // audit report
+    monthlyAudit:'Monthly Audit', preparedByAccounts:'Prepared by accounts', accountant:'Accountant',
+    contractEnds:'Contract ends', totalRent:'Total rent', auditMonth:'Audit month',
+    signature:'Signature', noContractsEndingThisMonth:'No contracts end in this month.',
     // payments
     payments:'Payments', payment:'Payment', addPayment:'Add payment',
     method:'Method', reference:'Reference',
@@ -303,8 +324,8 @@ const TR = {
     appTagline: 'إدارة بسيطة لإيجارات الإمارات',
     // nav
     nav_dashboard:'الرئيسية', nav_properties:'العقارات', nav_units:'الوحدات',
-    nav_tenants:'المستأجرون', nav_contracts:'العقود', nav_cheques:'الشيكات',
-    nav_payments:'المدفوعات', nav_maintenance:'الصيانة', nav_documents:'المستندات',
+    nav_tenants:'المستأجرون', nav_contracts:'العقود', nav_cheques:'المدفوعات',
+    nav_payments:'التأمينات', nav_maintenance:'الصيانة', nav_documents:'المستندات',
     nav_reports:'التقارير', nav_settings:'الإعدادات',
     // common
     add:'إضافة', edit:'تعديل', delete:'حذف', save:'حفظ', cancel:'إلغاء', close:'إغلاق',
@@ -322,8 +343,8 @@ const TR = {
     welcome:'أهلاً بعودتك', overview:'نظرة عامة اليوم',
     kpi_units:'الوحدات', kpi_occupied:'المؤجرة', kpi_vacant:'الشاغرة',
     kpi_monthIncome:'دخل هذا الشهر', kpi_overdue:'المتأخرة',
-    upcomingCheques:'الشيكات القادمة', expiringContracts:'عقود تنتهي قريباً',
-    overdueCheques:'شيكات متأخرة', recentMaintenance:'صيانة حديثة',
+    upcomingCheques:'الدفعات القادمة', expiringContracts:'عقود تنتهي قريباً',
+    overdueCheques:'دفعات متأخرة', recentMaintenance:'صيانة حديثة',
     quickActions:'إجراءات سريعة',
     qa_addTenant:'إضافة مستأجر', qa_addContract:'إضافة عقد',
     qa_logCheque:'تسجيل شيك', qa_logMaintenance:'تسجيل صيانة',
@@ -356,9 +377,24 @@ const TR = {
     cheques:'الشيكات', cheque:'شيك', addCheque:'إضافة شيك', editCheque:'تعديل شيك',
     chequeNo:'رقم الشيك', bank:'البنك', dueDate:'تاريخ الاستحقاق', depositedDate:'تاريخ الإيداع',
     clearedDate:'تاريخ التحصيل',
-    cheque_pending:'قيد الانتظار', cheque_deposited:'مودع', cheque_cleared:'محصّل',
+    cheque_pending:'بانتظار', cheque_deposited:'مودع', cheque_cleared:'مستلم',
     cheque_bounced:'مرتجع', cheque_replaced:'مستبدل', cheque_cancelled:'ملغى',
-    markDeposited:'تحديد كمودع', markCleared:'تحديد كمحصّل', markBounced:'تحديد كمرتجع',
+    markDeposited:'تحديد كمودع', markCleared:'تحديد كمستلم', markBounced:'تحديد كمرتجع',
+    // installments + modes
+    installment:'دفعة', installments:'الدفعات', paymentSchedule:'جدول الدفعات',
+    installmentLabel:'الدفعة', paymentMode:'طريقة الدفع', addInstallment:'إضافة دفعة',
+    mode_cheque:'شيك', mode_transfer:'تحويل', mode_cash:'نقد',
+    inst_First:'الأولى', inst_Second:'الثانية', inst_Third:'الثالثة', inst_Fourth:'الرابعة', inst_Fifth:'الخامسة', inst_Sixth:'السادسة', inst_Final:'الأخيرة',
+    scheduleTotal:'إجمالي الجدول', vsAnnualRent:'مقابل الإيجار السنوي', balance:'المتبقي', paid:'المدفوع',
+    received:'مستلم', waiting:'بانتظار',
+    quickSplit:'تقسيم سريع', splitEvenly:'تقسيم بالتساوي إلى',
+    // renewal / new rent (audit)
+    renewalDecision:'قرار التجديد / الإيجار الجديد', newRent:'الإيجار الجديد',
+    rs_no_increase:'بدون زيادة', rs_increase:'زيادة', rs_not_renewing:'لن يُجدّد', rs_under_processing:'قيد المعالجة', rs_none:'لم يُحدّد',
+    // audit report
+    monthlyAudit:'التدقيق الشهري', preparedByAccounts:'إعداد المحاسبة', accountant:'المحاسب',
+    contractEnds:'انتهاء العقد', totalRent:'إجمالي الإيجار', auditMonth:'شهر التدقيق',
+    signature:'التوقيع', noContractsEndingThisMonth:'لا توجد عقود تنتهي في هذا الشهر.',
     // payments
     payments:'المدفوعات', payment:'دفعة', addPayment:'إضافة دفعة',
     method:'الطريقة', reference:'المرجع',
@@ -402,7 +438,7 @@ const TR = {
 const DEFAULT_STATE = () => ({
   version: APP_VERSION,
   settings: {
-    lang: 'en', landlordName:'', landlordNameAr:'', currency:'AED',
+    lang: 'en', landlordName:'', landlordNameAr:'', accountantName:'', currency:'AED',
     dateFormat:'dd/MM/yyyy', reminderDaysAhead:14, lowBalanceThresholdAed:0,
   },
   properties: [], units: [], tenants: [], contracts: [],
@@ -593,33 +629,50 @@ function pickName(obj, lang){
 }
 
 // build cheque schedule for a contract: annualRent split into numCheques across startDate→endDate
-function buildChequeSchedule(contract){
-  const n = Math.max(1, Math.min(12, parseInt(contract.numCheques||1,10)));
-  const start = parseISO(contract.startDate); if(!start) return [];
-  const end   = parseISO(contract.endDate)   || addMonths(start,12);
+// Even-split helper: returns an array of PLAN rows (not full cheque records)
+// Each row: { label, amountAed, dueDate, mode }
+function evenSplitInstallments(annualRent, n, startDate, endDate){
+  n = Math.max(1, Math.min(12, parseInt(n||1,10)));
+  const start = parseISO(startDate) || new Date();
+  const end   = parseISO(endDate)   || addMonths(start,12);
   const monthsTotal = Math.max(1, Math.round(daysBetween(start,end)/30.44));
   const monthStep = Math.max(1, Math.round(monthsTotal/n));
-  const total = parseFloat(contract.annualRentAed||0);
+  const total = parseFloat(annualRent||0);
   const per = Math.round((total/n)*100)/100;
-  const items = [];
+  const rows = [];
   for(let i=0;i<n;i++){
     const due = addMonths(start, i*monthStep);
-    // last cheque takes the rounding remainder
     const amount = (i===n-1) ? Math.round((total - per*(n-1))*100)/100 : per;
-    items.push({
-      id: uid('ch'),
-      contractId: contract.id,
-      chequeNo:'',
-      bank: n===1 ? 'Bank transfer' : '',
-      dueDate: toISODate(due),
-      amountAed: amount,
-      status:'pending',
-      depositedDate:null, clearedDate:null,
-      replacedByChequeId:null,
-      notes:'',
-    });
+    const label = n===1 ? 'First' : (i===n-1 ? 'Final' : (INSTALLMENT_LABELS[i] || ('Payment '+(i+1))));
+    rows.push({ label, amountAed: amount, dueDate: toISODate(due), mode: n===1 ? 'transfer' : 'cheque' });
   }
-  return items;
+  return rows;
+}
+
+// Convert a plan row → a full cheque/installment record
+function planRowToCheque(contract, row){
+  return {
+    id: uid('ch'),
+    contractId: contract.id,
+    chequeNo:'',
+    bank:'',
+    mode: row.mode || 'cheque',
+    installmentLabel: row.label || '',
+    dueDate: row.dueDate || '',
+    amountAed: parseFloat(row.amountAed)||0,
+    status: row.status || 'pending',
+    depositedDate:null, clearedDate:null,
+    replacedByChequeId:null,
+    notes:'',
+  };
+}
+
+function buildChequeSchedule(contract){
+  // If a custom plan exists, use it; otherwise even-split
+  const plan = Array.isArray(contract.installmentsPlan) && contract.installmentsPlan.length
+    ? contract.installmentsPlan
+    : evenSplitInstallments(contract.annualRentAed, contract.numCheques||1, contract.startDate, contract.endDate);
+  return plan.map(row => planRowToCheque(contract, row));
 }
 
 // ---------- I18n hook -----------------------------------------------------
@@ -2435,8 +2488,8 @@ function ContractsPage({ setRoute }){
   }
 
   const today = startOfDay(new Date());
-  if(state.units.length===0 || state.tenants.length===0){
-    return <Card><Empty icon="📄" title={t('empty')} hint={`${t('units')} + ${t('tenants')}`} /></Card>;
+  if(state.units.length===0){
+    return <Card><Empty icon="📄" title={t('empty')} hint={`${t('units')}`} /></Card>;
   }
 
   return (
@@ -2476,12 +2529,13 @@ function ContractsPage({ setRoute }){
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-ink-900 truncate">{pickName(tn,lang)||'—'}</h3>
+                      <h3 className="font-semibold text-ink-900 truncate">{u?.label || '—'}{tn ? ` · ${pickName(tn,lang)}` : ''}</h3>
                       <Badge tone={c.status==='active'?'green':c.status==='expired'?'red':'gray'}>{t('contract_'+c.status)}</Badge>
                       {c.isCommercial && <Badge tone="blue">VAT 5%</Badge>}
                       {c.renewedFromId && <Badge tone="gold">↻ Renewed</Badge>}
+                      {c.renewalStatus && <Badge tone={c.renewalStatus==='not_renewing'?'red':c.renewalStatus==='increase'?'amber':'gray'}>{t('rs_'+c.renewalStatus)}</Badge>}
                     </div>
-                    <div className="text-sm text-ink-500 mt-1">{pickName(p,lang)} · {u?.label} · {p?.emirate}</div>
+                    <div className="text-sm text-ink-500 mt-1">{pickName(p,lang)} · {p?.emirate}</div>
                     <div className="text-xs text-ink-500 mt-1">{fmtDate(c.startDate,lang)} → {fmtDate(c.endDate,lang)}</div>
                     {c.tawtheeqNo && <div className="text-xs text-ink-500 mt-0.5">{rules.regLabel} #: <span className="num">{c.tawtheeqNo}</span></div>}
                     {/* Progress bar */}
@@ -2777,22 +2831,31 @@ function ContractEditor({ open, item, onClose, onSave }){
   const { t, lang } = useT();
   const [v, setV] = useState(item || {});
   const [genCheques, setGenCheques] = useState(true);
-  useEffect(()=>{ setV(item || {}); setGenCheques(true); }, [item]);
+  useEffect(()=>{
+    let init = item || {};
+    // For a brand-new contract, seed a default 1-payment plan if none exists
+    if(item && !state.contracts.some(c=>c.id===item.id) && !Array.isArray(item.installmentsPlan)){
+      init = { ...item, installmentsPlan: evenSplitInstallments(item.annualRentAed, 1, item.startDate, item.endDate) };
+    }
+    setV(init); setGenCheques(true);
+  }, [item]);
   if(!open) return null;
   const isNew = !state.contracts.some(c=>c.id===v.id);
   const update = p => setV({...v, ...p});
+  const rules = getContractRules(state, v);
 
-  // auto-fill annual rent from unit
-  const u = state.units.find(x=>x.id===v.unitId);
   function pickUnit(unitId){
     const u = state.units.find(x=>x.id===unitId);
-    update({ unitId, annualRentAed: u ? getUnitAnnualRent(u) : (v.annualRentAed||0) });
+    const annual = u ? getUnitAnnualRent(u) : (v.annualRentAed||0);
+    const plan = (isNew) ? evenSplitInstallments(annual, (v.installmentsPlan?.length||1), v.startDate, v.endDate) : v.installmentsPlan;
+    update({ unitId, annualRentAed: annual, installmentsPlan: plan });
   }
-  // auto-fill end date 12 months after start
   function pickStart(s){
     const start = parseISO(s);
     const end = start ? toISODate(addMonths(start, 12)) : '';
-    update({ startDate:s, endDate: v.endDate || end });
+    const newEnd = v.endDate || end;
+    const plan = isNew ? evenSplitInstallments(v.annualRentAed, (v.installmentsPlan?.length||1), s, newEnd) : v.installmentsPlan;
+    update({ startDate:s, endDate: newEnd, installmentsPlan: plan });
   }
 
   // 5% cap calculator if renewing
@@ -2800,7 +2863,20 @@ function ContractEditor({ open, item, onClose, onSave }){
   const capMax = lastContract ? Math.round(lastContract.annualRentAed*1.05) : null;
   const overCap = capMax!=null && (parseFloat(v.annualRentAed)||0) > capMax;
 
-  const perCheque = (parseFloat(v.annualRentAed)||0) / Math.max(1, parseInt(v.numCheques||1,10));
+  // ---- Installment plan helpers ----
+  const plan = Array.isArray(v.installmentsPlan) ? v.installmentsPlan : [];
+  const planTotal = plan.reduce((s,r)=>s+(parseFloat(r.amountAed)||0),0);
+  const planMismatch = Math.abs(planTotal - (parseFloat(v.annualRentAed)||0)) > 1;
+  function quickSplit(n){ update({ installmentsPlan: evenSplitInstallments(v.annualRentAed, n, v.startDate, v.endDate) }); }
+  function updateRow(i, patch){ const rows = plan.map((r,idx)=> idx===i ? {...r, ...patch} : r); update({ installmentsPlan: rows }); }
+  function addRow(){
+    const last = plan[plan.length-1];
+    const nextDue = last ? toISODate(addMonths(parseISO(last.dueDate)||new Date(), 3)) : (v.startDate||todayISO());
+    update({ installmentsPlan: [...plan, { label:'Final', amountAed:0, dueDate:nextDue, mode:'cheque', status:'pending' }] });
+  }
+  function removeRow(i){ update({ installmentsPlan: plan.filter((_,idx)=>idx!==i) }); }
+
+  const isIncrease = v.renewalStatus==='increase';
 
   return (
     <Modal open={open} onClose={onClose} title={isNew ? t('addContract') : t('editContract')} size="lg">
@@ -2814,9 +2890,9 @@ function ContractEditor({ open, item, onClose, onSave }){
             })}
           </Select>
         </Field>
-        <Field label={t('tenant')} required>
+        <Field label={`${t('tenant')} (optional)`}>
           <Select value={v.tenantId||''} onChange={e=>update({tenantId:e.target.value})}>
-            <option value="">{t('select')}</option>
+            <option value="">— {t('none')} —</option>
             {state.tenants.map(tn=> <option key={tn.id} value={tn.id}>{pickName(tn,lang)} ({tn.phone})</option>)}
           </Select>
         </Field>
@@ -2830,22 +2906,13 @@ function ContractEditor({ open, item, onClose, onSave }){
           <Input type="number" min="0" value={v.annualRentAed||0} onChange={e=>update({annualRentAed:parseFloat(e.target.value||0)})}/>
           {overCap && <div className="mt-1 text-xs text-red-600">⚠ Exceeds 5% annual cap. Previous: {fmtAed(lastContract.annualRentAed,lang)}.</div>}
         </Field>
-        <Field label="Payments per year" hint={v.numCheques>1 ? (perCheque ? `${fmtAed(perCheque,lang)} ${t('perCheque').toLowerCase()}` : null) : "1 annual payment (bank transfer)"}>
-          <Select value={v.numCheques||1} onChange={e=>update({numCheques:parseInt(e.target.value,10)})}>
-            <option value="1">1 — single annual payment</option>
-            <option value="2">2 — every 6 months</option>
-            <option value="4">4 — quarterly (cheques)</option>
-            <option value="6">6 — every 2 months</option>
-            <option value="12">12 — monthly</option>
-          </Select>
-        </Field>
         <Field label={`${t('securityDeposit')} (${t('aed')})`}>
           <Input type="number" min="0" value={v.securityDepositAed||0} onChange={e=>update({securityDepositAed:parseFloat(e.target.value||0)})}/>
         </Field>
-        <Field label={`${(getContractRules(state, v)).regLabel} number`} hint={(getContractRules(state, v)).regAuthority}>
-          <Input value={v.tawtheeqNo||''} onChange={e=>update({tawtheeqNo:e.target.value})} placeholder={(getContractRules(state, v)).regLabel==='Ejari'?'12345/2026':'TWT-2026-001'}/>
+        <Field label={`${rules.regLabel} number`} hint={rules.regAuthority}>
+          <Input value={v.tawtheeqNo||''} onChange={e=>update({tawtheeqNo:e.target.value})} placeholder={rules.regLabel==='Ejari'?'12345/2026':'TWT-2026-001'}/>
         </Field>
-        <Field label={`${(getContractRules(state, v)).regLabel} ${t('endDate').toLowerCase()}`}>
+        <Field label={`${rules.regLabel} ${t('endDate').toLowerCase()}`}>
           <Input type="date" value={v.tawtheeqExpiry||''} onChange={e=>update({tawtheeqExpiry:e.target.value})}/>
         </Field>
         <Field label={t('status')}>
@@ -2853,28 +2920,78 @@ function ContractEditor({ open, item, onClose, onSave }){
             {CONTRACT_STATUS.map(s=> <option key={s} value={s}>{t('contract_'+s)}</option>)}
           </Select>
         </Field>
+        {/* Renewal decision / new rent */}
+        <Field label={t('renewalDecision')}>
+          <Select value={v.renewalStatus||''} onChange={e=>update({renewalStatus:e.target.value})}>
+            {RENEWAL_STATUSES.map(s=> <option key={s||'none'} value={s}>{s===''?t('rs_none'):t('rs_'+s)}</option>)}
+          </Select>
+          {isIncrease && <Input className="mt-2" type="number" min="0" placeholder={t('newRent')+' (AED)'} value={v.newRentAed||0} onChange={e=>update({newRentAed:parseFloat(e.target.value||0)})}/>}
+        </Field>
         <Field className="sm:col-span-2">
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" checked={!!v.isCommercial} onChange={e=>update({isCommercial:e.target.checked, vatPct: e.target.checked?5:0})}/>
             <span>Commercial unit (apply 5% VAT)</span>
           </label>
         </Field>
-        <Field label={t('notes')} className="sm:col-span-2">
-          <Textarea rows="2" value={v.notes||''} onChange={e=>update({notes:e.target.value})}/>
-        </Field>
+      </div>
 
-        {isNew && (
-          <Field className="sm:col-span-2">
-            <label className="inline-flex items-center gap-2 text-sm">
+      {/* Installment schedule builder */}
+      <div className="mt-5 p-4 rounded-2xl border border-ink-200 bg-ink-50/50">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h4 className="font-semibold text-ink-900">{t('paymentSchedule')}</h4>
+          {isNew ? (
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-ink-500 me-1">{t('quickSplit')}:</span>
+              {[1,2,3,4,6,12].map(n=> <button key={n} onClick={()=>quickSplit(n)} className="px-2 py-1 rounded-lg bg-white border border-ink-300 hover:bg-ink-100 font-medium">{n}</button>)}
+            </div>
+          ) : (
+            <span className="text-xs text-ink-500">Edit individual payments in the Payments tab.</span>
+          )}
+        </div>
+
+        {isNew ? (
+          <>
+            <div className="space-y-2">
+              {plan.map((row,i)=>(
+                <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                  <select value={row.label||''} onChange={e=>updateRow(i,{label:e.target.value})} className="col-span-3 px-2 py-1.5 rounded-lg border border-ink-300 bg-white text-sm">
+                    {INSTALLMENT_LABELS.map(l=> <option key={l} value={l}>{t('inst_'+l, l)}</option>)}
+                  </select>
+                  <input type="number" min="0" value={row.amountAed||0} onChange={e=>updateRow(i,{amountAed:parseFloat(e.target.value||0)})} className="col-span-3 px-2 py-1.5 rounded-lg border border-ink-300 bg-white text-sm num" placeholder="Amount"/>
+                  <input type="date" value={row.dueDate||''} onChange={e=>updateRow(i,{dueDate:e.target.value})} className="col-span-3 px-2 py-1.5 rounded-lg border border-ink-300 bg-white text-sm num"/>
+                  <select value={row.mode||'cheque'} onChange={e=>updateRow(i,{mode:e.target.value})} className="col-span-2 px-2 py-1.5 rounded-lg border border-ink-300 bg-white text-sm">
+                    {PAYMENT_MODES.map(m=> <option key={m} value={m}>{t('mode_'+m)}</option>)}
+                  </select>
+                  <button onClick={()=>removeRow(i)} className="col-span-1 p-1.5 rounded-lg hover:bg-red-50 text-red-600 text-center">✕</button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={addRow}>+ {t('addInstallment')}</Button>
+              <div className={classNames('text-sm', planMismatch?'text-amber-700':'text-emerald-700')}>
+                {t('scheduleTotal')}: <span className="font-semibold num">{fmtAed(planTotal,lang)}</span>
+                {planMismatch && <span className="text-xs text-amber-700"> ⚠ ({t('vsAnnualRent')} {fmtAed(v.annualRentAed,lang)})</span>}
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm mt-3">
               <input type="checkbox" checked={genCheques} onChange={e=>setGenCheques(e.target.checked)}/>
-              <span>{t('generateCheques')} — {parseInt(v.numCheques||1,10)} {t('chequesWillBeCreated')}</span>
+              <span>Create these {plan.length} payment(s) automatically</span>
             </label>
-          </Field>
+          </>
+        ) : (
+          <div className="text-sm text-ink-500">
+            {state.cheques.filter(ch=>ch.contractId===v.id).length} payment(s) on record.
+          </div>
         )}
       </div>
+
+      <Field label={t('notes')} className="mt-4">
+        <Textarea rows="2" value={v.notes||''} onChange={e=>update({notes:e.target.value})}/>
+      </Field>
+
       <div className="mt-5 flex gap-2 justify-end">
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
-        <Button onClick={()=>{ if(!v.unitId||!v.tenantId||!v.startDate||!v.endDate||!v.annualRentAed){ alert(t('required')); return; } onSave(v, { generateCheques: isNew && genCheques }); }}>{t('save')}</Button>
+        <Button onClick={()=>{ if(!v.unitId||!v.startDate||!v.endDate||!v.annualRentAed){ alert(t('required')); return; } onSave(v, { generateCheques: isNew && genCheques }); }}>{t('save')}</Button>
       </div>
     </Modal>
   );
@@ -2898,7 +3015,7 @@ function ChequesPage(){
   items = [...items].sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
   const filtered = useFiltered(items, search, ['chequeNo','bank','notes']);
 
-  function blank(){ return { id:uid('ch'), contractId: state.contracts[0]?.id || '', chequeNo:'', bank:'', dueDate:todayISO(), amountAed:0, status:'pending', depositedDate:null, clearedDate:null, replacedByChequeId:null, notes:'' }; }
+  function blank(){ return { id:uid('ch'), contractId: state.contracts[0]?.id || '', chequeNo:'', bank:'', mode:'cheque', installmentLabel:'', dueDate:todayISO(), amountAed:0, status:'pending', depositedDate:null, clearedDate:null, replacedByChequeId:null, notes:'' }; }
   function save(item){
     if(state.cheques.some(c=>c.id===item.id)) dispatch({ type:'updateCheque', item });
     else dispatch({ type:'addCheque', item });
@@ -2957,10 +3074,15 @@ function ChequesPage(){
             </Badge></div>
           )}
         </td>
-        <td className="px-3 py-3">{pickName(tn,lang) || '—'}</td>
-        <td className="px-3 py-3 text-ink-700">{u?.label || '—'}</td>
-        <td className="px-3 py-3 num">{ch.chequeNo || '—'}</td>
-        <td className="px-3 py-3">{ch.bank || '—'}</td>
+        <td className="px-3 py-3">
+          <div className="font-medium text-ink-900">{u?.label || '—'}</div>
+          {tn && <div className="text-xs text-ink-500">{pickName(tn,lang)}</div>}
+        </td>
+        <td className="px-3 py-3">
+          <Badge tone={ch.mode==='transfer'?'blue':ch.mode==='cash'?'gold':'gray'}>{t('mode_'+(ch.mode||'cheque'))}</Badge>
+          {ch.installmentLabel && <div className="text-xs text-ink-500 mt-1">{t('inst_'+ch.installmentLabel, ch.installmentLabel)}</div>}
+        </td>
+        <td className="px-3 py-3 num text-ink-500">{ch.chequeNo || '—'}</td>
         <td className="px-3 py-3 text-end font-semibold num">{fmtAed(ch.amountAed, lang)}</td>
         <td className="px-3 py-3">
           <Badge tone={ch.status==='cleared'?'green':ch.status==='deposited'?'blue':ch.status==='bounced'?'red':ch.status==='replaced'||ch.status==='cancelled'?'gray':'amber'}>
@@ -2984,7 +3106,7 @@ function ChequesPage(){
 
   return (
     <>
-      <PageHeader title={t('cheques')} count={filtered.length} search={search} setSearch={setSearch}
+      <PageHeader title={t('nav_cheques')} count={filtered.length} search={search} setSearch={setSearch}
         filter={
           <div className="flex gap-2">
             <Select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="text-sm">
@@ -2996,12 +3118,12 @@ function ChequesPage(){
               {state.contracts.map(c=>{
                 const tn = state.tenants.find(x=>x.id===c.tenantId);
                 const u  = state.units.find(x=>x.id===c.unitId);
-                return <option key={c.id} value={c.id}>{pickName(tn,lang)} · {u?.label}</option>;
+                return <option key={c.id} value={c.id}>{(tn?pickName(tn,lang):u?.label)} · {u?.label}</option>;
               })}
             </Select>
           </div>
         }
-        action={state.contracts.length>0 ? <Button icon={<I.plus/>} onClick={()=>setEditItem(blank())}>{t('addCheque')}</Button> : null} />
+        action={state.contracts.length>0 ? <Button icon={<I.plus/>} onClick={()=>setEditItem(blank())}>{t('addInstallment')}</Button> : null} />
 
       {/* Summary KPIs */}
       {state.cheques.length>0 && (
@@ -3034,10 +3156,9 @@ function ChequesPage(){
                     <thead className="text-ink-500">
                       <tr className="border-b border-ink-100">
                         <th className="text-start px-5 py-2 font-medium">{t('dueDate')}</th>
-                        <th className="text-start px-3 py-2 font-medium">{t('tenant')}</th>
                         <th className="text-start px-3 py-2 font-medium">{t('unit')}</th>
-                        <th className="text-start px-3 py-2 font-medium">{t('chequeNo')}</th>
-                        <th className="text-start px-3 py-2 font-medium">{t('bank')}</th>
+                        <th className="text-start px-3 py-2 font-medium">{t('paymentMode')}</th>
+                        <th className="text-start px-3 py-2 font-medium">{t('chequeNo')}/Ref</th>
                         <th className="text-end px-3 py-2 font-medium">{t('amount')}</th>
                         <th className="text-start px-3 py-2 font-medium">{t('status')}</th>
                         <th className="text-end px-5 py-2 font-medium">{t('actions')}</th>
@@ -3206,12 +3327,24 @@ function ChequeEditor({ open, item, onClose, onSave }){
             {state.contracts.map(c=>{
               const tn = state.tenants.find(x=>x.id===c.tenantId);
               const u  = state.units.find(x=>x.id===c.unitId);
-              return <option key={c.id} value={c.id}>{pickName(tn,lang)} · {u?.label} · {fmtAed(c.annualRentAed,lang)}/yr</option>;
+              const who = tn ? pickName(tn,lang) : (u?.label || t('contract'));
+              return <option key={c.id} value={c.id}>{who} · {u?.label} · {fmtAed(c.annualRentAed,lang)}/yr</option>;
             })}
           </Select>
         </Field>
-        <Field label={t('chequeNo')}>
-          <Input value={v.chequeNo||''} onChange={e=>update({chequeNo:e.target.value})}/>
+        <Field label={t('paymentMode')}>
+          <Select value={v.mode||'cheque'} onChange={e=>update({mode:e.target.value})}>
+            {PAYMENT_MODES.map(m=> <option key={m} value={m}>{t('mode_'+m)}</option>)}
+          </Select>
+        </Field>
+        <Field label={t('installmentLabel')}>
+          <Select value={v.installmentLabel||''} onChange={e=>update({installmentLabel:e.target.value})}>
+            <option value="">—</option>
+            {INSTALLMENT_LABELS.map(l=> <option key={l} value={l}>{t('inst_'+l, l)}</option>)}
+          </Select>
+        </Field>
+        <Field label={(v.mode==='transfer'?'Reference':t('chequeNo'))}>
+          <Input value={v.chequeNo||''} onChange={e=>update({chequeNo:e.target.value})} placeholder={v.mode==='transfer'?'Transfer ref':'Cheque #'}/>
         </Field>
         <Field label={t('bank')}>
           <Input value={v.bank||''} onChange={e=>update({bank:e.target.value})}/>
@@ -3226,9 +3359,6 @@ function ChequeEditor({ open, item, onClose, onSave }){
           <Select value={v.status||'pending'} onChange={e=>update({status:e.target.value})}>
             {CHEQUE_STATUS.map(s=> <option key={s} value={s}>{t('cheque_'+s)}</option>)}
           </Select>
-        </Field>
-        <Field label={t('depositedDate')}>
-          <Input type="date" value={v.depositedDate||''} onChange={e=>update({depositedDate:e.target.value})}/>
         </Field>
         <Field label={t('clearedDate')}>
           <Input type="date" value={v.clearedDate||''} onChange={e=>update({clearedDate:e.target.value})}/>
@@ -3924,7 +4054,7 @@ function ReportsPage(){
   const { state } = useApp();
   const { t, lang } = useT();
   const currentYear = new Date().getFullYear();
-  const [tab, setTab] = useState('pnl');
+  const [tab, setTab] = useState('audit');
   const [year, setYear] = useState(currentYear);
   const [tenantId, setTenantId] = useState(state.tenants[0]?.id || '');
 
@@ -3950,6 +4080,7 @@ function ReportsPage(){
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 border-b border-ink-100">
         {[
+          { id:'audit',     label:t('monthlyAudit')  },
           { id:'pnl',       label:'P&L summary'     },
           { id:'tenant',    label:'Tenant ledger'   },
           { id:'bounced',   label:'Bounced cheques' },
@@ -3963,10 +4094,161 @@ function ReportsPage(){
         ))}
       </div>
 
+      {tab==='audit'     && <MonthlyAuditReport/>}
       {tab==='pnl'       && <PnLReport year={year}/>}
       {tab==='tenant'    && <TenantLedgerReport year={year} tenantId={tenantId} setTenantId={setTenantId}/>}
       {tab==='bounced'   && <BouncedReport year={year}/>}
       {tab==='occupancy' && <OccupancyReport year={year}/>}
+    </div>
+  );
+}
+
+// ---------- Monthly Audit report (matches accountant's format) -----------
+
+function MonthlyAuditReport(){
+  const { state } = useApp();
+  const { t, lang } = useT();
+  const now = new Date();
+  const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+  const [y, m] = ym.split('-').map(n=>parseInt(n,10));
+
+  // Build month options: from earliest to latest contract end + a year
+  const monthOptions = useMemo(()=>{
+    const set = new Set();
+    state.contracts.forEach(c=>{ const d=parseISO(c.endDate); if(d) set.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); });
+    set.add(ym);
+    return Array.from(set).sort();
+  }, [state.contracts, ym]);
+
+  // Contracts whose end date is in the selected month
+  const rows = useMemo(()=>{
+    return state.contracts.filter(c=>{
+      const d = parseISO(c.endDate);
+      return d && d.getFullYear()===y && (d.getMonth()+1)===m;
+    }).map((c,i)=>{
+      const u = state.units.find(x=>x.id===c.unitId);
+      const p = u && state.properties.find(x=>x.id===u.propertyId);
+      const cheques = state.cheques.filter(ch=>ch.contractId===c.id);
+      const paid = cheques.filter(ch=>ch.status==='cleared').reduce((s,ch)=>s+(parseFloat(ch.amountAed)||0),0);
+      const total = parseFloat(c.annualRentAed)||0;
+      const balance = Math.max(0, total - paid);
+      const status = balance<=0 ? 'CLEAR' : 'WAITING';
+      const areaUnit = [p?.area || pickName(p,lang), u?.label].filter(Boolean).join(' - ');
+      let newRent = '';
+      if(c.renewalStatus==='increase') newRent = c.newRentAed ? fmtAed(c.newRentAed,'en') : t('rs_increase');
+      else if(c.renewalStatus) newRent = t('rs_'+c.renewalStatus).toUpperCase();
+      return { i:i+1, c, u, p, areaUnit, total, paid, balance, status, newRent };
+    });
+  }, [state, y, m, lang]);
+
+  const totals = rows.reduce((acc,r)=>({ total:acc.total+r.total, paid:acc.paid+r.paid, balance:acc.balance+r.balance }), {total:0,paid:0,balance:0});
+  const monthName = new Date(y, m-1, 1).toLocaleDateString('en-GB', { month:'long', year:'numeric' }).toUpperCase();
+  const landlord = state.settings.landlordName || 'ABDULLA KHALIFA ALKAABI';
+  const accountant = state.settings.accountantName || 'Mohamed Ismail';
+
+  function exportCsv(){
+    const out = [
+      [landlord, 'MONTHLY AUDIT', monthName],
+      [],
+      ['SI','AREA / UNIT','CONTRACT ENDS','TOTAL RENT','PAID','BALANCE','STATUS','NEW RENT'],
+      ...rows.map(r=>[r.i, r.areaUnit, toISODate(parseISO(r.c.endDate)), r.total, r.paid, r.balance, r.status, r.newRent]),
+      ['', 'TOTAL', '', totals.total, totals.paid, totals.balance, '', ''],
+    ];
+    downloadCsv(`monthly-audit-${ym}.csv`, out);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2 no-print">
+        <Field label={t('auditMonth')}>
+          <Select value={ym} onChange={e=>setYm(e.target.value)} className="text-sm">
+            {monthOptions.map(opt=>{
+              const [yy,mm]=opt.split('-').map(n=>parseInt(n,10));
+              return <option key={opt} value={opt}>{new Date(yy,mm-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</option>;
+            })}
+          </Select>
+        </Field>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={exportCsv}>⬇ CSV</Button>
+          <Button size="sm" variant="secondary" icon={<I.print/>} onClick={()=>window.print()}>{t('print')}</Button>
+        </div>
+      </div>
+
+      {/* Printable audit sheet */}
+      <div id="audit-sheet" className="bg-white rounded-2xl border border-ink-200 p-6 sm:p-8">
+        <div className="text-center border-b-2 border-ink-900 pb-3 mb-4">
+          <div className="text-lg sm:text-xl font-bold text-ink-900">{landlord}</div>
+          <div className="text-sm text-ink-700 uppercase tracking-wide">PRIVATE REAL ESTATE — MONTHLY AUDIT</div>
+          <div className="text-base font-semibold text-gold-600 mt-1">{monthName}</div>
+        </div>
+
+        {rows.length===0 ? (
+          <div className="text-center text-ink-500 py-10">{t('noContractsEndingThisMonth')}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-ink-200">
+              <thead>
+                <tr className="bg-ink-100 text-ink-700">
+                  <th className="border border-ink-200 px-2 py-2 text-center">SI</th>
+                  <th className="border border-ink-200 px-3 py-2 text-start">AREA / UNIT</th>
+                  <th className="border border-ink-200 px-3 py-2 text-start">{t('contractEnds').toUpperCase()}</th>
+                  <th className="border border-ink-200 px-3 py-2 text-end">{t('totalRent').toUpperCase()}</th>
+                  <th className="border border-ink-200 px-3 py-2 text-end">{t('paid').toUpperCase()}</th>
+                  <th className="border border-ink-200 px-3 py-2 text-end">{t('balance').toUpperCase()}</th>
+                  <th className="border border-ink-200 px-3 py-2 text-center">{t('status').toUpperCase()}</th>
+                  <th className="border border-ink-200 px-3 py-2 text-start">{t('newRent').toUpperCase()}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r=>(
+                  <tr key={r.c.id}>
+                    <td className="border border-ink-200 px-2 py-2 text-center num">{r.i}</td>
+                    <td className="border border-ink-200 px-3 py-2 font-medium">{r.areaUnit}</td>
+                    <td className="border border-ink-200 px-3 py-2 num">{fmtDate(r.c.endDate, lang)}</td>
+                    <td className="border border-ink-200 px-3 py-2 text-end num">{fmtAed(r.total,'en')}</td>
+                    <td className="border border-ink-200 px-3 py-2 text-end num text-emerald-700">{fmtAed(r.paid,'en')}</td>
+                    <td className="border border-ink-200 px-3 py-2 text-end num text-amber-700">{r.balance>0?fmtAed(r.balance,'en'):'0'}</td>
+                    <td className="border border-ink-200 px-3 py-2 text-center"><span className={classNames('font-semibold', r.status==='CLEAR'?'text-emerald-700':'text-amber-700')}>{r.status}</span></td>
+                    <td className="border border-ink-200 px-3 py-2 text-xs">{r.newRent || '—'}</td>
+                  </tr>
+                ))}
+                <tr className="bg-ink-50 font-semibold">
+                  <td className="border border-ink-200 px-2 py-2"></td>
+                  <td className="border border-ink-200 px-3 py-2">TOTAL</td>
+                  <td className="border border-ink-200 px-3 py-2"></td>
+                  <td className="border border-ink-200 px-3 py-2 text-end num">{fmtAed(totals.total,'en')}</td>
+                  <td className="border border-ink-200 px-3 py-2 text-end num text-emerald-700">{fmtAed(totals.paid,'en')}</td>
+                  <td className="border border-ink-200 px-3 py-2 text-end num text-amber-700">{fmtAed(totals.balance,'en')}</td>
+                  <td className="border border-ink-200 px-3 py-2"></td>
+                  <td className="border border-ink-200 px-3 py-2"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Signature block */}
+        <div className="grid grid-cols-2 gap-8 mt-10 text-sm">
+          <div>
+            <div className="text-ink-500 uppercase text-xs">{t('preparedByAccounts')}</div>
+            <div className="font-semibold text-ink-900 mt-1">{accountant}</div>
+            <div className="border-t border-ink-400 mt-8 pt-1 text-xs text-ink-500">{t('signature')}</div>
+          </div>
+          <div className="text-end">
+            <div className="text-ink-500 uppercase text-xs">{t('landlord')}</div>
+            <div className="font-semibold text-ink-900 mt-1">{landlord}</div>
+            <div className="border-t border-ink-400 mt-8 pt-1 text-xs text-ink-500">{t('signature')}</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #audit-sheet, #audit-sheet * { visibility: visible; }
+          #audit-sheet { position: absolute; inset: 0; border: none; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -4482,6 +4764,9 @@ function SettingsPage(){
           </Field>
           <Field label={t('landlordNameAr')}>
             <Input dir="rtl" value={state.settings.landlordNameAr||''} onChange={e=>dispatch({type:'setSettings', patch:{ landlordNameAr:e.target.value }})}/>
+          </Field>
+          <Field label={t('accountant')+' '+t('name').toLowerCase()} hint="Shown on the monthly audit report">
+            <Input value={state.settings.accountantName||''} onChange={e=>dispatch({type:'setSettings', patch:{ accountantName:e.target.value }})} placeholder="Mohamed Ismail"/>
           </Field>
           <Field label={t('language')}>
             <Select value={state.settings.lang||'en'} onChange={e=>dispatch({type:'setSettings', patch:{ lang:e.target.value }})}>
