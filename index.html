@@ -585,20 +585,24 @@ function getUnitMonthlyRent(u){
   return getUnitAnnualRent(u)/12;
 }
 
-// Mark a payment received. Bank transfers REQUIRE a unique reference number
-// (letters + numbers) before they can be accepted. Returns true if applied.
+// Mark a payment received. A reference is REQUIRED before it can be accepted:
+//  - cheque   → cheque number
+//  - transfer → bank transfer reference (letters + numbers)
+// Cash payments don't need a reference. Returns true if applied.
 function receivePayment(ch, dispatch){
   const ar = document.documentElement.lang === 'ar';
+  const mode = ch.mode || 'cheque';
   let ref = String(ch.chequeNo || '').trim();
-  if(ch.mode === 'transfer' && !ref){
+  if((mode === 'cheque' || mode === 'transfer') && !ref){
+    const isTransfer = mode === 'transfer';
     const msg = ar
-      ? 'أدخل رقم مرجع التحويل البنكي (أحرف وأرقام) لتأكيد استلام الدفعة:'
-      : 'Enter the bank transfer reference number (letters + numbers) to mark this payment as received:';
+      ? (isTransfer ? 'أدخل رقم مرجع التحويل البنكي (أحرف وأرقام) لتأكيد استلام الدفعة:' : 'أدخل رقم الشيك لتأكيد استلام الدفعة:')
+      : (isTransfer ? 'Enter the bank transfer reference number (letters + numbers) to mark this payment as received:' : 'Enter the cheque number to mark this payment as received:');
     const entered = window.prompt(msg, '');
     if(entered === null) return false;            // user cancelled
     ref = entered.trim();
     if(!ref){
-      alert(ar ? 'رقم المرجع مطلوب لقبول التحويل البنكي.' : 'A reference number is required to accept a bank transfer.');
+      alert(ar ? 'رقم المرجع / الشيك مطلوب لقبول الدفعة.' : 'A reference / cheque number is required to accept the payment.');
       return false;
     }
   }
@@ -3396,8 +3400,8 @@ function ChequeEditor({ open, item, onClose, onSave }){
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button onClick={()=>{
           if(!v.contractId||!v.dueDate||!v.amountAed){ alert(t('required')); return; }
-          if(v.status==='cleared' && v.mode==='transfer' && !String(v.chequeNo||'').trim()){
-            alert(lang==='ar' ? 'رقم مرجع التحويل البنكي مطلوب لتأكيد الاستلام.' : 'A bank transfer reference number is required to mark it received.');
+          if(v.status==='cleared' && (v.mode==='cheque'||v.mode==='transfer'||!v.mode) && !String(v.chequeNo||'').trim()){
+            alert(lang==='ar' ? 'رقم الشيك / مرجع التحويل مطلوب لتأكيد الاستلام.' : 'A cheque number / transfer reference is required to mark it received.');
             return;
           }
           onSave(v);
