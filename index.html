@@ -292,6 +292,7 @@ const TR = {
     title:'Title', description:'Description', vendor:'Vendor', cost:'Cost',
     paidBy:'Paid by', paid_landlord:'Landlord', paid_tenant:'Tenant', paid_shared:'Shared',
     maint_pending:'Pending', maint_in_progress:'In progress', maint_done:'Done', maint_cancelled:'Cancelled',
+    cat_ac:'AC service', cat_plumbing:'Plumbing', cat_electrical:'Electrical', cat_paint:'Paint', cat_cleaning:'Cleaning', cat_pest:'Pest control', cat_appliance:'Appliance', cat_carpentry:'Carpentry', cat_garden:'Garden', cat_other:'Other', category:'Category',
     // documents
     documents:'Documents', addDocument:'Upload document', uploadFile:'Upload file',
     doc_emirates_id:'Emirates ID', doc_passport:'Passport', doc_contract:'Contract', doc_other:'Other',
@@ -404,6 +405,7 @@ const TR = {
     title:'العنوان', description:'الوصف', vendor:'الفني / الشركة', cost:'التكلفة',
     paidBy:'يدفعها', paid_landlord:'المالك', paid_tenant:'المستأجر', paid_shared:'مشتركة',
     maint_pending:'قيد الانتظار', maint_in_progress:'جارية', maint_done:'منتهية', maint_cancelled:'ملغاة',
+    cat_ac:'صيانة المكيف', cat_plumbing:'سباكة', cat_electrical:'كهرباء', cat_paint:'دهان', cat_cleaning:'تنظيف', cat_pest:'مكافحة حشرات', cat_appliance:'أجهزة', cat_carpentry:'نجارة', cat_garden:'حديقة', cat_other:'أخرى', category:'الفئة',
     // documents
     documents:'المستندات', addDocument:'رفع مستند', uploadFile:'رفع ملف',
     doc_emirates_id:'الهوية الإماراتية', doc_passport:'الجواز', doc_contract:'العقد', doc_other:'أخرى',
@@ -3548,14 +3550,38 @@ function PaymentsPage(){
 
 // ---------- MaintenancePage ----------------------------------------------
 
-const MAINT_PRESETS = [
-  { en:'AC service',   ar:'صيانة المكيف',  emoji:'❄️' },
-  { en:'Plumbing',     ar:'سباكة',         emoji:'🚰' },
-  { en:'Paint',        ar:'دهان',          emoji:'🎨' },
-  { en:'Deep clean',   ar:'تنظيف عميق',     emoji:'🧹' },
-  { en:'Electrical',   ar:'كهرباء',         emoji:'💡' },
-  { en:'Pest control', ar:'مكافحة حشرات',   emoji:'🐜' },
+// Maintenance categories — used for filtering and the "click a type to see all" view
+const MAINT_CATEGORIES = [
+  { key:'ac',         en:'AC service',   ar:'صيانة المكيف',  emoji:'❄️' },
+  { key:'plumbing',   en:'Plumbing',     ar:'سباكة',         emoji:'🚰' },
+  { key:'electrical', en:'Electrical',   ar:'كهرباء',         emoji:'💡' },
+  { key:'paint',      en:'Paint',        ar:'دهان',          emoji:'🎨' },
+  { key:'cleaning',   en:'Cleaning',     ar:'تنظيف',          emoji:'🧹' },
+  { key:'pest',       en:'Pest control', ar:'مكافحة حشرات',   emoji:'🐜' },
+  { key:'appliance',  en:'Appliance',    ar:'أجهزة',          emoji:'🔌' },
+  { key:'carpentry',  en:'Carpentry',    ar:'نجارة',          emoji:'🔨' },
+  { key:'garden',     en:'Garden',       ar:'حديقة',          emoji:'🌿' },
+  { key:'other',      en:'Other',        ar:'أخرى',           emoji:'🔧' },
 ];
+const MAINT_CAT_BY_KEY = Object.fromEntries(MAINT_CATEGORIES.map(c=>[c.key, c]));
+// Quick-add presets reuse the categories
+const MAINT_PRESETS = MAINT_CATEGORIES.filter(c=>c.key!=='other');
+
+// Infer a category for a record: explicit field, else guess from the title text
+function maintCategory(m){
+  if(m.category && MAINT_CAT_BY_KEY[m.category]) return m.category;
+  const t = (m.title||'').toLowerCase();
+  if(/(a\/?c|air[\s-]?con|cooling|hvac|مكيف|تكييف)/.test(t)) return 'ac';
+  if(/(plumb|leak|pipe|water heater|sink|drain|سباك|تسرب|سخان)/.test(t)) return 'plumbing';
+  if(/(electric|light|wiring|socket|switch|كهرب|إنارة)/.test(t)) return 'electrical';
+  if(/(paint|دهان)/.test(t)) return 'paint';
+  if(/(clean|تنظيف)/.test(t)) return 'cleaning';
+  if(/(pest|insect|cockroach|حشر|مكافحة)/.test(t)) return 'pest';
+  if(/(fridge|washer|oven|appliance|أجهزة|ثلاجة|غسالة)/.test(t)) return 'appliance';
+  if(/(carpen|door|wood|نجار|باب)/.test(t)) return 'carpentry';
+  if(/(garden|landscap|plant|حديقة|زراعة)/.test(t)) return 'garden';
+  return 'other';
+}
 
 function MaintenancePage(){
   const { state, dispatch } = useApp();
@@ -3564,7 +3590,30 @@ function MaintenancePage(){
   const [editItem, setEditItem] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [search, setSearch] = useState('');
-  const filtered = useFiltered(state.maintenance, search, ['title','titleAr','description','vendor']);
+  const [catFilter, setCatFilter] = useState('');     // '' = all categories
+  const [propFilter, setPropFilter] = useState('');   // '' = all properties
+  const [statusFilter, setStatusFilter] = useState('');
+
+  // Apply category / property / status filters, then search
+  let base = state.maintenance;
+  if(catFilter)    base = base.filter(m=>maintCategory(m)===catFilter);
+  if(propFilter)   base = base.filter(m=>{ const u=state.units.find(x=>x.id===m.unitId); return u && u.propertyId===propFilter; });
+  if(statusFilter) base = base.filter(m=>m.status===statusFilter);
+  const filtered = useFiltered(base, search, ['title','titleAr','description','vendor']);
+
+  // Per-category summary (across everything, ignoring the category filter so the chips stay stable)
+  const catStats = useMemo(()=>{
+    const m = {};
+    MAINT_CATEGORIES.forEach(c=> m[c.key] = { count:0, cost:0, open:0 });
+    state.maintenance.forEach(rec=>{
+      const k = maintCategory(rec);
+      if(!m[k]) m[k] = { count:0, cost:0, open:0 };
+      m[k].count++;
+      m[k].cost += parseFloat(rec.costAed)||0;
+      if(rec.status==='pending'||rec.status==='in_progress') m[k].open++;
+    });
+    return m;
+  }, [state.maintenance]);
 
   // KPIs
   const thisYear  = state.maintenance.filter(m=>{ const d=parseISO(m.date); return d && d.getFullYear()===today.getFullYear(); });
@@ -3583,8 +3632,9 @@ function MaintenancePage(){
   function blank(preset){
     return {
       id:uid('m'),
-      unitId:state.units[0]?.id||'',
+      unitId: (propFilter ? state.units.find(u=>u.propertyId===propFilter)?.id : state.units[0]?.id) || '',
       date:todayISO(),
+      category: preset?.key || (catFilter || 'other'),
       title: preset?.en || '',
       titleAr: preset?.ar || '',
       description:'',
@@ -3612,10 +3662,11 @@ function MaintenancePage(){
         <td className="px-3 py-3"><div className="text-ink-700">{pickName(p,lang)}</div><div className="text-xs text-ink-500">{u?.label}</div></td>
         <td className="px-3 py-3">
           <div className="flex items-start gap-2">
-            {m.photo && <img src={m.photo} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>}
+            {m.photo ? <img src={m.photo} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0"/>
+                     : <span className="text-xl flex-shrink-0" title={t('cat_'+maintCategory(m))}>{(MAINT_CAT_BY_KEY[maintCategory(m)]||{}).emoji}</span>}
             <div className="min-w-0">
               <div className="font-medium text-ink-900">{m.title}</div>
-              {m.description && <div className="text-xs text-ink-500 truncate max-w-xs">{m.description}</div>}
+              <div className="text-xs text-ink-500">{t('cat_'+maintCategory(m))}{m.description?` · ${m.description}`:''}</div>
             </div>
           </div>
         </td>
@@ -3662,9 +3713,25 @@ function MaintenancePage(){
     );
   }
 
+  const activeCat = catFilter ? MAINT_CAT_BY_KEY[catFilter] : null;
+  // Only show category cards that actually have records, plus keep order
+  const shownCats = MAINT_CATEGORIES.filter(c=> (catStats[c.key]?.count||0) > 0);
+
   return (
     <>
       <PageHeader title={t('maintenance')} count={filtered.length} search={search} setSearch={setSearch}
+        filter={
+          <div className="flex gap-2">
+            <Select value={propFilter} onChange={e=>setPropFilter(e.target.value)} className="text-sm">
+              <option value="">{t('all')} {t('properties').toLowerCase()}</option>
+              {state.properties.map(p=> <option key={p.id} value={p.id}>{pickName(p,lang)}</option>)}
+            </Select>
+            <Select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="text-sm">
+              <option value="">{t('all')}</option>
+              {MAINT_STATUS.map(s=> <option key={s} value={s}>{t('maint_'+s)}</option>)}
+            </Select>
+          </div>
+        }
         action={state.units.length>0 ? <Button icon={<I.plus/>} onClick={()=>setEditItem(blank())}>{t('addMaintenance')}</Button> : null} />
 
       {/* KPIs */}
@@ -3677,17 +3744,56 @@ function MaintenancePage(){
         </div>
       )}
 
-      {/* Quick-add presets */}
+      {/* Category summary — click a type to see all of its jobs */}
       {state.units.length>0 && (
         <div className="mb-5">
-          <div className="text-xs uppercase text-ink-500 font-medium mb-2">Quick log</div>
-          <div className="flex flex-wrap gap-2">
-            {MAINT_PRESETS.map(p=>(
-              <button key={p.en} onClick={()=>setEditItem(blank(p))}
-                className="px-3 py-2 rounded-xl bg-white border border-ink-300 hover:bg-ink-100 text-sm font-medium text-ink-900 flex items-center gap-2">
-                <span>{p.emoji}</span> <span>{lang==='ar'?p.ar:p.en}</span>
+          <div className="text-xs uppercase text-ink-500 font-medium mb-2">{state.maintenance.length>0 ? 'By type — tap to filter' : 'Quick log'}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {/* "All" card */}
+            {state.maintenance.length>0 && (
+              <button onClick={()=>setCatFilter('')}
+                className={classNames('p-3 rounded-2xl border text-start transition', catFilter==='' ? 'border-gold-500 bg-gold-500/5' : 'border-ink-200 bg-white hover:bg-ink-100')}>
+                <div className="text-2xl">📋</div>
+                <div className="font-semibold text-ink-900 text-sm mt-1">{t('all')}</div>
+                <div className="text-xs text-ink-500">{state.maintenance.length} jobs</div>
               </button>
-            ))}
+            )}
+            {/* Category cards (when there ARE records) or quick-add presets (when empty) */}
+            {(state.maintenance.length>0 ? shownCats : MAINT_PRESETS).map(c=>{
+              const st = catStats[c.key] || { count:0, cost:0, open:0 };
+              const isAddMode = state.maintenance.length===0;
+              const active = catFilter===c.key;
+              return (
+                <button key={c.key}
+                  onClick={()=> isAddMode ? setEditItem(blank(c)) : setCatFilter(active?'':c.key)}
+                  className={classNames('p-3 rounded-2xl border text-start transition', active ? 'border-gold-500 bg-gold-500/5' : 'border-ink-200 bg-white hover:bg-ink-100')}>
+                  <div className="text-2xl">{c.emoji}</div>
+                  <div className="font-semibold text-ink-900 text-sm mt-1">{lang==='ar'?c.ar:c.en}</div>
+                  {isAddMode ? (
+                    <div className="text-xs text-ink-500">+ log</div>
+                  ) : (
+                    <div className="text-xs text-ink-500">{st.count} job{st.count===1?'':'s'} · {fmtAed(st.cost, lang)}{st.open>0 && <span className="text-amber-700"> · {st.open} open</span>}</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Active category banner */}
+      {activeCat && (
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-2 p-3 rounded-2xl bg-ink-900 text-white">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{activeCat.emoji}</span>
+            <div>
+              <div className="font-semibold">{lang==='ar'?activeCat.ar:activeCat.en}</div>
+              <div className="text-xs text-ink-300">{catStats[activeCat.key]?.count||0} jobs · {fmtAed(catStats[activeCat.key]?.cost||0, lang)} total{propFilter?` · ${pickName(state.properties.find(p=>p.id===propFilter),lang)}`:' · all units'}</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="gold" onClick={()=>setEditItem(blank(activeCat))}>+ {lang==='ar'?activeCat.ar:activeCat.en}</Button>
+            <Button size="sm" variant="ghost" className="!text-white hover:!bg-white/10" onClick={()=>setCatFilter('')}>✕ {t('all')}</Button>
           </div>
         </div>
       )}
@@ -3695,7 +3801,7 @@ function MaintenancePage(){
       {state.units.length===0 ? (
         <Card><Empty icon="🔧" title={t('empty')} hint={t('units')}/></Card>
       ) : filtered.length===0 ? (
-        <Card><Empty icon="🔧" title={t('empty')} hint={t('emptyHelp')}/></Card>
+        <Card><Empty icon="🔧" title={activeCat ? `No ${(lang==='ar'?activeCat.ar:activeCat.en)} jobs yet` : t('empty')} hint={t('emptyHelp')}/></Card>
       ) : (
         <div className="space-y-6">
           {openItems.length>0 && (
@@ -3752,7 +3858,18 @@ function MaintenanceEditor({ item, setItem, vendors, onSave }){
           </Select>
         </Field>
         <Field label={t('date')} required><Input type="date" value={item.date||''} onChange={e=>setItem({...item, date:e.target.value})}/></Field>
-        <Field label={t('title')} required><Input value={item.title||''} onChange={e=>setItem({...item, title:e.target.value})} placeholder="e.g. AC service, plumbing repair"/></Field>
+        <Field label={t('category')} required>
+          <Select value={item.category||maintCategory(item)} onChange={e=>{
+            const cat = MAINT_CAT_BY_KEY[e.target.value];
+            // if title is empty or matches a preset name, set the title to the category name
+            const presetNames = MAINT_CATEGORIES.flatMap(c=>[c.en, c.ar]);
+            const replaceTitle = !item.title || presetNames.includes(item.title);
+            setItem({...item, category:e.target.value, ...(replaceTitle && cat ? { title: cat.en, titleAr: cat.ar } : {})});
+          }}>
+            {MAINT_CATEGORIES.map(c=> <option key={c.key} value={c.key}>{c.emoji} {lang==='ar'?c.ar:c.en}</option>)}
+          </Select>
+        </Field>
+        <Field label={t('title')} required className="sm:col-span-2"><Input value={item.title||''} onChange={e=>setItem({...item, title:e.target.value})} placeholder="e.g. AC service, plumbing repair"/></Field>
         <Field label={t('vendor')}>
           <Input value={item.vendor||''} onChange={e=>setItem({...item, vendor:e.target.value})} list="vendor-list"/>
           <datalist id="vendor-list">{vendors.map(v=> <option key={v} value={v}/>)}</datalist>
